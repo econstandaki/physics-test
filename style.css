@@ -36,6 +36,12 @@ aside h1 {
     position: relative; 
 }
 
+/* Add to style.css */
+.nav-btn.active {
+    background: rgba(255, 255, 255, 0.15); /* Slightly lighter/shaded */
+    border-left: 4px solid var(--accent); /* Blue accent on left edge */
+}
+
 .unit-header { padding: 15px 20px; font-weight: bold; background: rgba(0,0,0,0.2); cursor: pointer; display: flex; justify-content: space-between; font-size: 0.9rem; }
 .unit-header:hover { background: rgba(0,0,0,0.3); }
 
