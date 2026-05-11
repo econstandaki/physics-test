@@ -10413,6 +10413,7 @@ function reset_4_2() {
         v: 0, 
         t: 0,
         
+        history: [], // FIX: This array was missing, causing the graph to crash on load
         running: false,
         burning: false,
         
@@ -10422,8 +10423,8 @@ function reset_4_2() {
     
     state.x = 50; 
     
-    if(state.mode === 'guided') {
-        if(state.level === 1 || state.level === 2) {
+    if (state.mode === 'guided') {
+        if (state.level === 1 || state.level === 2) {
             state.v0 = 20.0;
             state.v = 20.0;
             state.x = 50;
@@ -10435,7 +10436,7 @@ function reset_4_2() {
     
     calcPhysics_4_2();
 
-    if(state.level >= 3) document.getElementById('u4-2-badge').style.display = 'block';
+    if (state.level >= 3) document.getElementById('u4-2-badge').style.display = 'block';
 
     setMode_4_2(state.mode);
     updateCalcDisplay_4_2();
@@ -12370,3 +12371,393 @@ function checkAnswer_5_1(lvl) {
 function checkLevel_5_1() {
 }
 
+// ===============================================
+// === UNIT 5.2: CONNECTING LINEAR & ROTATIONAL (Gold Standard v4.6) ===
+// ===============================================
+
+function setup_5_2() {
+    canvas.width = 700; 
+    canvas.height = 640; 
+
+    document.getElementById('sim-title').innerText = "5.2 Connecting Linear & Rotational";
+    
+    document.getElementById('sim-desc').innerHTML = `
+        <h3 style="margin-top:0; margin-bottom:10px;">The Rolling Wheel</h3>
+        <p style="margin-bottom:10px; line-height:1.4;">
+        When a wheel rolls without slipping, its rotational speed dictates its linear speed along the ground.
+        <br><b>Equation:</b> <i class="var">v</i> = <i class="var">r&omega;</i> (Linear Velocity = Radius &times; Angular Velocity)
+        <br><i><b>Mission:</b> Master the bridge between spinning and moving!</i></p>`;
+
+    document.getElementById('sim-controls').innerHTML = `
+        <div style="background:#eef2f3; padding:10px; border-radius:5px; margin-bottom:15px; border:1px solid #ccc; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; flex-direction:column; gap:5px;">
+                <label style="font-weight:bold; margin:0;">Mode:</label>
+                <div style="display:flex; gap:15px;">
+                    <label style="cursor:pointer; margin:0; display:flex; align-items:center;">
+                        <input type="radio" name="sim-mode" value="guided" checked onchange="setMode_5_2('guided')" style="margin-right:5px;"> Guided
+                    </label>
+                    <label style="cursor:pointer; margin:0; display:flex; align-items:center;">
+                        <input type="radio" name="sim-mode" value="challenge" onchange="setMode_5_2('challenge')" style="margin-right:5px;"> Full Version
+                    </label>
+                </div>
+            </div>
+            <div id="u5-2-badge" style="display:none; font-weight:bold; color:#f39c12; font-family:sans-serif; text-align:right;">
+                <span style="font-size:1.5em; vertical-align:middle;">&#9733;</span> WHEEL WIZARD
+            </div>
+        </div>
+
+        <div id="calc-5-2" style="background:white; border:1px solid #2c3e50; border-radius:4px; padding:10px; margin-bottom:15px; font-family:'Times New Roman', serif; font-size:1.0em; line-height:1.6;">
+        </div>
+
+        <div class="control-group" style="border-left: 4px solid #8e44ad; padding-left: 10px;">
+            <label style="color:#8e44ad; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>Radius (<i class="var">r</i>):</span>
+                <span><span id="v-r">1.0</span> m</span>
+            </label>
+            <input type="range" id="in-r" class="phys-slider" min="0.5" max="2.0" step="0.1" value="1.0" 
+                oninput="updateState_5_2('r', this.value)">
+        </div>
+
+        <div class="control-group" style="border-left: 4px solid #c0392b; padding-left: 10px; margin-top:10px;">
+            <label style="color:#c0392b; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>Angular Velocity (<i class="var">&omega;</i>):</span>
+                <span><span id="v-w">2.0</span> rad/s</span>
+            </label>
+            <input type="range" id="in-w" class="phys-slider" min="-10.0" max="10.0" step="0.5" value="2.0" 
+                oninput="updateState_5_2('w', this.value)">
+        </div>
+
+        <div style="margin-top:15px; display:flex; gap:10px;">
+            <button class="btn btn-green" onclick="start_5_2()" id="btn-start">Roll Wheel</button>
+            <button class="btn btn-red" onclick="reset_5_2()">Reset</button>
+        </div>
+        
+        <div id="u5-2-questions" style="margin-top:20px; border-top:2px solid #eee; padding-top:15px; background:#fafafa; padding:15px; border-radius:5px;">
+        </div>
+    `;
+
+    const preventJump = (e) => {
+        const rect = e.target.getBoundingClientRect();
+        const min = parseFloat(e.target.min);
+        const max = parseFloat(e.target.max);
+        const val = parseFloat(e.target.value);
+        let clientX = e.clientX;
+        if(e.type === 'touchstart') clientX = e.touches[0].clientX;
+        const ratio = (val - min) / (max - min);
+        const clickX = clientX - rect.left;
+        const thumbX = ratio * rect.width;
+        if(Math.abs(clickX - thumbX) > 35) e.preventDefault();
+    };
+
+    document.querySelectorAll('.phys-slider').forEach(s => {
+        s.addEventListener('mousedown', preventJump);
+        s.addEventListener('touchstart', preventJump, {passive: false});
+    });
+
+    reset_5_2();
+}
+
+function updateState_5_2(key, val) {
+    if(state.running) return;
+    
+    state[key] = parseFloat(val);
+    if(key === 'r') document.getElementById('v-r').innerText = state.r.toFixed(1);
+    if(key === 'w') document.getElementById('v-w').innerText = state.w.toFixed(1);
+    
+    calcPhysics_5_2();
+    updateCalcDisplay_5_2();
+    draw_5_2();
+}
+
+function setMode_5_2(mode) {
+    state.mode = mode;
+    const qDiv = document.getElementById('u5-2-questions');
+    const badge = document.getElementById('u5-2-badge');
+
+    if(state.level >= 3) badge.style.display = 'block';
+    else badge.style.display = 'none';
+
+    if(mode === 'challenge') {
+        qDiv.style.display = 'none';
+        document.getElementById('in-r').disabled = false;
+        document.getElementById('in-r').parentElement.style.opacity = "1.0";
+    } else {
+        qDiv.style.display = 'block';
+        renderQuestions_5_2();
+    }
+    
+    updateLocks_5_2();
+    draw_5_2();
+    updateCalcDisplay_5_2();
+}
+
+function updateLocks_5_2() {
+    let sliders = document.querySelectorAll('.phys-slider');
+    let runBtn = document.getElementById('btn-start');
+    let lock = state.running;
+    
+    sliders.forEach(s => {
+        if(state.mode === 'guided' && state.level === 0 && s.id === 'in-r') {
+            s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+        }
+        s.disabled = lock;
+        s.style.opacity = lock ? "0.5" : "1.0";
+    });
+    runBtn.disabled = lock;
+    runBtn.style.opacity = lock ? "0.5" : "1.0";
+}
+
+function calcPhysics_5_2() {
+    state.v = state.r * state.w;
+}
+
+function updateCalcDisplay_5_2() {
+    let box = document.getElementById('calc-5-2');
+    if(!box) return;
+    
+    const v = (t) => `<i class="var" style="font-family:'Times New Roman',serif">${t}</i>`;
+    
+    box.innerHTML = `
+        <div style="margin-bottom:5px;">
+            ${v('v')} = ${v('r&omega;')}
+        </div>
+        <div style="font-size:1.1em;">
+            <b>${state.v.toFixed(1)} m/s</b> = (${state.r.toFixed(1)} m)(${state.w.toFixed(1)} rad/s)
+        </div>
+    `;
+}
+
+function start_5_2() {
+    if(!state.running) {
+        state.running = true;
+        state.t = 0;
+        
+        calcPhysics_5_2();
+        updateLocks_5_2();
+        loop_5_2();
+    }
+}
+
+function reset_5_2() {
+    let savedLevel = loadProgress('5.2'); 
+
+    state = {
+        r: parseFloat(document.getElementById('in-r').value),
+        w: parseFloat(document.getElementById('in-w').value),
+        
+        x: 50, 
+        theta: 0,
+        t: 0,
+        running: false,
+        
+        mode: document.querySelector('input[name="sim-mode"]:checked').value,
+        level: savedLevel
+    };
+    
+    if(state.mode === 'guided') {
+        if(state.level === 0) {
+            state.r = 1.0;
+            document.getElementById('v-r').innerText = "1.0";
+            document.getElementById('in-r').value = 1.0;
+        }
+    }
+    
+    calcPhysics_5_2();
+
+    if(state.level >= 3) document.getElementById('u5-2-badge').style.display = 'block';
+
+    setMode_5_2(state.mode);
+    updateCalcDisplay_5_2();
+    
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            draw_5_2();
+        });
+    });
+}
+
+function loop_5_2() {
+    if(currentSim !== '5.2') return;
+
+    if(state.running) {
+        let dt = 0.02;
+        state.t += dt;
+        
+        state.theta += state.w * dt;
+        state.x += state.v * dt * 25; // 25 px/m scaling for visual
+        
+        if(state.x > 650 || state.x < 50 || state.t > 5.0) {
+            state.running = false;
+            if(state.mode === 'guided') checkLevel_5_2();
+            updateLocks_5_2();
+        }
+    }
+
+    draw_5_2();
+    if(state.running) requestAnimationFrame(loop_5_2);
+}
+
+function draw_5_2() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    let floorY = 400;
+    let pxPerM = 25;
+    
+    // Floor
+    ctx.fillStyle = "#ecf0f1"; ctx.fillRect(0, 0, 700, floorY); 
+    ctx.fillStyle = "#bdc3c7"; ctx.fillRect(0, floorY, 700, 40);
+    
+    ctx.fillStyle = "#7f8c8d"; ctx.font = "10px sans-serif"; ctx.textAlign = "center";
+    for(let i=0; i<700; i+=pxPerM) {
+        ctx.fillRect(i, floorY, 1, 10);
+    }
+    
+    let cx = state.x;
+    let visR = state.r * 40; // Exaggerated visual radius to see clearly
+    let cy = floorY - visR;
+    
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(state.theta);
+    
+    // Draw Wheel
+    ctx.beginPath(); ctx.arc(0, 0, visR, 0, Math.PI*2);
+    ctx.fillStyle = "rgba(41, 128, 185, 0.2)"; ctx.fill();
+    ctx.strokeStyle = "#2980b9"; ctx.lineWidth = 4; ctx.stroke();
+    
+    // Spokes
+    ctx.strokeStyle = "#34495e"; ctx.lineWidth = 2;
+    for(let i=0; i<8; i++) {
+        let a = (i * Math.PI) / 4;
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(visR * Math.cos(a), visR * Math.sin(a)); ctx.stroke();
+    }
+    
+    // Marker (to see rotation clearly)
+    ctx.fillStyle = "#e74c3c"; ctx.beginPath(); ctx.arc(visR - 8, 0, 6, 0, Math.PI*2); ctx.fill();
+    
+    ctx.restore();
+    
+    // Axle
+    ctx.fillStyle = "#2c3e50"; ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI*2); ctx.fill();
+    
+    // Velocity Vector
+    if(Math.abs(state.v) > 0.1) {
+        drawVector_5_2(cx, cy - visR - 20, state.v * 10, 0, "#27ae60", "v");
+    }
+}
+
+function drawVector_5_2(x, y, dx, dy, color, label) {
+    let endX = x + dx;
+    let endY = y + dy; 
+    
+    ctx.strokeStyle = color; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(endX, endY); ctx.stroke();
+    
+    let angle = Math.atan2(dy, dx);
+    let headLen = 8;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(endX, endY);
+    ctx.lineTo(endX - headLen * Math.cos(angle - Math.PI/6), endY - headLen * Math.sin(angle - Math.PI/6));
+    ctx.lineTo(endX - headLen * Math.cos(angle + Math.PI/6), endY - headLen * Math.sin(angle + Math.PI/6));
+    ctx.fill();
+    
+    if(label) {
+        ctx.fillStyle = color;
+        ctx.font = "bold 16px 'Times New Roman', serif";
+        ctx.fillText(label, endX + (dx>0?10:-20), endY - 10);
+    }
+}
+
+function renderQuestions_5_2() {
+    let div = document.getElementById('u5-2-questions');
+    const v = (text) => `<i class="var">${text}</i>`;
+
+    if(state.level === 0) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#2980b9;">Level 1: The Basics</h4>
+            <p>Radius ${v('r')} is locked at <b>1.0 m</b>.</p>
+            <p>Set Angular Velocity ${v('&omega;')} to <b>5.0 rad/s</b>.</p>
+            <p>Calculate the resulting linear velocity ${v('v')}.</p>
+            <div style="margin-top:10px;">
+                <input type="number" id="ans-1" placeholder="m/s" style="width:80px; padding:4px;" 
+                       onkeypress="if(event.key==='Enter') checkAnswer_5_2(0)"> 
+                <button onclick="checkAnswer_5_2(0)" style="cursor:pointer; padding:4px 8px;">Check</button>
+            </div>
+            <div id="fb-0"></div>
+        `;
+    } else if(state.level === 1) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#c0392b;">Level 2: The Small Wheel</h4>
+            <p>You swap to a smaller wheel: ${v('r')} = <b>0.5 m</b>.</p>
+            <p>You need to achieve a linear velocity of <b>4.0 m/s</b>.</p>
+            <p>Calculate the required Angular Velocity ${v('&omega;')}.</p>
+            <div style="margin-top:10px;">
+                <input type="number" id="ans-2" placeholder="rad/s" style="width:80px; padding:4px;" 
+                       onkeypress="if(event.key==='Enter') checkAnswer_5_2(1)"> 
+                <button onclick="checkAnswer_5_2(1)" style="cursor:pointer; padding:4px 8px;">Check</button>
+            </div>
+            <div id="fb-1"></div>
+        `;
+    } else if(state.level === 2) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 3: Target Speed</h4>
+            <p>Set Radius ${v('r')} to <b>2.0 m</b>.</p>
+            <p>Adjust ${v('&omega;')} until the linear velocity reads exactly <b>10.0 m/s</b>.</p>
+            <div style="margin-top:10px;">
+                <button onclick="checkAnswer_5_2(2)" style="padding:5px 15px; cursor:pointer;">I set it!</button>
+            </div>
+            <div id="fb-2"></div>
+        `;
+    } else {
+        div.innerHTML = `
+            <h3 style="color:#f39c12; margin:0;">&#9733; WHEEL WIZARD &#9733;</h3>
+            <p>You have mastered the bridge equations!</p>
+        `;
+    }
+}
+
+function checkAnswer_5_2(lvl) {
+    let correct = false;
+    let fb = document.getElementById('fb-'+lvl);
+    
+    if(lvl === 0) {
+        let val = parseFloat(document.getElementById('ans-1').value);
+        if(state.w === 5.0 && Math.abs(val - 5.0) < 0.1) correct = true;
+        else if (state.w !== 5.0) {
+            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Set &omega; to 5.0 first!</span>`;
+            return;
+        }
+    }
+    else if(lvl === 1) {
+        let val = parseFloat(document.getElementById('ans-2').value);
+        if(state.r === 0.5 && Math.abs(val - 8.0) < 0.1) correct = true;
+        else if (state.r !== 0.5) {
+            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Set Radius to 0.5 first!</span>`;
+            return;
+        }
+    }
+    else if(lvl === 2) {
+        if(state.r === 2.0 && Math.abs(state.v - 10.0) < 0.1) correct = true;
+        else if (state.r !== 2.0) {
+            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Set Radius to 2.0!</span>`;
+            return;
+        } else {
+            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Current v is ${state.v.toFixed(1)}. Aim for 10.0!</span>`;
+            return;
+        }
+    }
+
+    if(correct) {
+        fb.innerHTML = "<span style='color:green; font-weight:bold;'>Correct! Unlocking next step...</span>";
+        setTimeout(() => {
+            state.level++;
+            saveProgress('5.2', state.level);
+            if(state.level >= 3) document.getElementById('u5-2-badge').style.display = 'block';
+            renderQuestions_5_2();
+            reset_5_2();
+        }, 1500);
+    } else {
+        fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Incorrect. Check your math!</span>`;
+    }
+}
