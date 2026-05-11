@@ -10298,11 +10298,11 @@ function setup_4_2() {
         const max = parseFloat(e.target.max);
         const val = parseFloat(e.target.value);
         let clientX = e.clientX;
-        if(e.type === 'touchstart') clientX = e.touches[0].clientX;
+        if (e.type === 'touchstart') clientX = e.touches[0].clientX;
         const ratio = (val - min) / (max - min);
         const clickX = clientX - rect.left;
         const thumbX = ratio * rect.width;
-        if(Math.abs(clickX - thumbX) > 35) e.preventDefault();
+        if (Math.abs(clickX - thumbX) > 35) e.preventDefault();
     };
 
     document.querySelectorAll('.phys-slider').forEach(s => {
@@ -10314,12 +10314,12 @@ function setup_4_2() {
 }
 
 function updateState_4_2(key, val) {
-    if(state.running) return;
+    if (state.running) return;
     
     state[key] = parseFloat(val);
-    if(key === 'F') document.getElementById('v-f').innerText = state.F.toFixed(0);
-    if(key === 'dtBurn') document.getElementById('v-dt').innerText = state.dtBurn.toFixed(1);
-    if(key === 'm') document.getElementById('v-m').innerText = state.m.toFixed(1);
+    if (key === 'F') document.getElementById('v-f').innerText = state.F.toFixed(0);
+    if (key === 'dtBurn') document.getElementById('v-dt').innerText = state.dtBurn.toFixed(1);
+    if (key === 'm') document.getElementById('v-m').innerText = state.m.toFixed(1);
     
     calcPhysics_4_2();
     updateCalcDisplay_4_2();
@@ -10331,10 +10331,13 @@ function setMode_4_2(mode) {
     const qDiv = document.getElementById('u4-2-questions');
     const badge = document.getElementById('u4-2-badge');
 
-    if(state.level >= 3) badge.style.display = 'block';
-    else badge.style.display = 'none';
+    if (state.level >= 3) {
+        badge.style.display = 'block';
+    } else {
+        badge.style.display = 'none';
+    }
 
-    if(mode === 'challenge') {
+    if (mode === 'challenge') {
         qDiv.style.display = 'none';
         document.getElementById('in-f').disabled = false;
         document.getElementById('in-dt').disabled = false;
@@ -10366,12 +10369,12 @@ function updateLocks_4_2() {
 function calcPhysics_4_2() {
     state.impulse = state.F * state.dtBurn;
     state.deltaV = state.impulse / state.m;
-    state.finalV = (state.v0 || 0) + state.deltaV;
+    state.finalV = state.v0 + state.deltaV;
 }
 
 function updateCalcDisplay_4_2() {
     let box = document.getElementById('calc-4-2');
-    if(!box) return;
+    if (!box) return;
     
     const v = (t) => `<i class="var" style="font-family:'Times New Roman',serif">${t}</i>`;
     
@@ -10389,7 +10392,7 @@ function updateCalcDisplay_4_2() {
 }
 
 function start_4_2() {
-    if(!state.running) {
+    if (!state.running) {
         state.running = true;
         state.t = 0;
         state.history = []; 
@@ -10409,19 +10412,21 @@ function reset_4_2() {
         dtBurn: parseFloat(document.getElementById('in-dt').value),
         
         v0: 0,
-        x: 0, 
+        x: 50, 
         v: 0, 
         t: 0,
         
-        history: [], // FIX: This array was missing, causing the graph to crash on load
+        history: [], 
         running: false,
         burning: false,
+        
+        impulse: 0,
+        deltaV: 0,
+        finalV: 0,
         
         mode: document.querySelector('input[name="sim-mode"]:checked').value,
         level: savedLevel
     };
-    
-    state.x = 50; 
     
     if (state.mode === 'guided') {
         if (state.level === 1 || state.level === 2) {
@@ -10429,14 +10434,17 @@ function reset_4_2() {
             state.v = 20.0;
             state.x = 50;
         } else {
-            state.v0 = 0;
-            state.v = 0;
+            state.v0 = 0.0;
+            state.v = 0.0;
+            state.x = 50;
         }
     }
     
     calcPhysics_4_2();
 
-    if (state.level >= 3) document.getElementById('u4-2-badge').style.display = 'block';
+    if (state.level >= 3) {
+        document.getElementById('u4-2-badge').style.display = 'block';
+    }
 
     setMode_4_2(state.mode);
     updateCalcDisplay_4_2();
@@ -10449,13 +10457,13 @@ function reset_4_2() {
 }
 
 function loop_4_2() {
-    if(currentSim !== '4.2') return;
+    if (currentSim !== '4.2') return;
 
-    if(state.running) {
+    if (state.running) {
         let dt = 0.02;
         state.t += dt;
         
-        if(state.t <= state.dtBurn) {
+        if (state.t <= state.dtBurn) {
             state.burning = true;
             let a = state.F / state.m;
             state.v += a * dt;
@@ -10465,119 +10473,123 @@ function loop_4_2() {
         
         state.x += state.v * dt * 5; 
         
-        if(state.t * 60 % 3 < 1) { 
+        if (state.t * 60 % 3 < 1) { 
             state.history.push({
                 t: state.t, 
                 f: state.burning ? state.F : 0
             });
         }
         
-        if(state.t > state.dtBurn + 2.0 || state.x > 650 || state.x < 0) {
+        if (state.t > state.dtBurn + 2.0 || state.x > 650 || state.x < 0) {
             state.running = false;
             state.burning = false;
-            if(state.mode === 'guided') checkLevel_4_2();
+            if (state.mode === 'guided') {
+                checkLevel_4_2();
+            }
             updateLocks_4_2();
         }
     }
 
     draw_4_2();
-    if(state.running) requestAnimationFrame(loop_4_2);
+    
+    if (state.running) {
+        requestAnimationFrame(loop_4_2);
+    }
 }
 
 function draw_4_2() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+    
     let floorY = 300;
-
-    // === ZONE 1: WORLD ===
-    // Sky/Bg
-    ctx.fillStyle = "#ecf0f1";
-    ctx.fillRect(0, 0, 700, floorY);
-
+    
+    // World Background
+    ctx.fillStyle = "#ecf0f1"; 
+    ctx.fillRect(0, 0, 700, floorY); 
+    
     // Track
-    ctx.fillStyle = "#95a5a6";
+    ctx.fillStyle = "#95a5a6"; 
     ctx.fillRect(0, floorY, 700, 20);
     
-    // Ticks
+    // Track Ticks
     ctx.fillStyle = "#7f8c8d";
     for (let i = 0; i < 700; i += 50) {
         ctx.fillRect(i, floorY, 2, 20);
     }
-
-    // Sled
-    let w = 60;
+    
+    // Sled Geometry
+    let w = 60; 
     let h = 30;
     let cx = state.x;
     let cy = floorY - h;
-
-    // Body
-    ctx.fillStyle = "#34495e";
+    
+    // Draw Sled Body
+    ctx.fillStyle = "#34495e"; 
     ctx.fillRect(cx - w / 2, cy, w, h);
-
-    // Nozzle & Flame
-    ctx.fillStyle = "#7f8c8d";
+    
+    // Nozzle & Flame Logic
+    ctx.fillStyle = "#7f8c8d"; 
     
     if (state.F >= 0) {
-        // Nozzle on Left (Pushing Right)
+        // Pushing Right (Nozzle on Left)
         ctx.fillRect(cx - w / 2 - 10, cy + 5, 10, 20);
         
         if (state.burning) {
             ctx.fillStyle = "#e67e22";
-            ctx.beginPath();
-            ctx.moveTo(cx - w / 2 - 10, cy + 5);
-            ctx.lineTo(cx - w / 2 - 40, cy + 15);
-            ctx.lineTo(cx - w / 2 - 10, cy + 25);
+            ctx.beginPath(); 
+            ctx.moveTo(cx - w / 2 - 10, cy + 5); 
+            ctx.lineTo(cx - w / 2 - 40, cy + 15); 
+            ctx.lineTo(cx - w / 2 - 10, cy + 25); 
             ctx.fill();
         }
     } else {
-        // Nozzle on Right (Pushing Left/Braking)
+        // Pushing Left / Braking (Nozzle on Right)
         ctx.fillRect(cx + w / 2, cy + 5, 10, 20);
         
         if (state.burning) {
             ctx.fillStyle = "#e67e22";
-            ctx.beginPath();
-            ctx.moveTo(cx + w / 2 + 10, cy + 5);
-            ctx.lineTo(cx + w / 2 + 40, cy + 15);
-            ctx.lineTo(cx + w / 2 + 10, cy + 25);
+            ctx.beginPath(); 
+            ctx.moveTo(cx + w / 2 + 10, cy + 5); 
+            ctx.lineTo(cx + w / 2 + 40, cy + 15); 
+            ctx.lineTo(cx + w / 2 + 10, cy + 25); 
             ctx.fill();
         }
     }
-
+    
+    // Velocity Vector
     if (Math.abs(state.v) > 0.1) {
         drawVector_4_2(cx, cy - 20, state.v * 5, 0, "#27ae60", "v");
     }
-
+    
     // === ZONE 2: GRAPHS ===
     let panelY = 350;
-    let panelH = 250;
     let midX = 350;
-
-    ctx.fillStyle = "white";
-    ctx.fillRect(0, panelY, 700, panelH);
     
-    ctx.strokeStyle = "#ccc";
+    ctx.fillStyle = "white"; 
+    ctx.fillRect(0, panelY, 700, 250);
+    
+    ctx.strokeStyle = "#ccc"; 
     ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(midX, panelY);
-    ctx.lineTo(midX, panelY + panelH);
+    ctx.beginPath(); 
+    ctx.moveTo(midX, panelY); 
+    ctx.lineTo(midX, panelY + 250); 
     ctx.stroke();
-
+    
     drawAreaGraph_4_2(50, panelY + 20, 250, 200, state.history, state.dtBurn);
     drawMomentumBars_4_2(400, panelY + 20, 250, 200);
 }
 
 function drawVector_4_2(x, y, dx, dy, color, label) {
     let endX = x + dx;
-    let endY = y + dy;
-
-    ctx.strokeStyle = color;
+    let endY = y + dy; 
+    
+    ctx.strokeStyle = color; 
     ctx.lineWidth = 3;
     
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(endX, endY);
+    ctx.beginPath(); 
+    ctx.moveTo(x, y); 
+    ctx.lineTo(endX, endY); 
     ctx.stroke();
-
+    
     let angle = Math.atan2(dy, dx);
     let headLen = 8;
     
@@ -10587,36 +10599,36 @@ function drawVector_4_2(x, y, dx, dy, color, label) {
     ctx.lineTo(endX - headLen * Math.cos(angle - Math.PI / 6), endY - headLen * Math.sin(angle - Math.PI / 6));
     ctx.lineTo(endX - headLen * Math.cos(angle + Math.PI / 6), endY - headLen * Math.sin(angle + Math.PI / 6));
     ctx.fill();
-
+    
     if (label) {
-        ctx.fillStyle = color;
+        ctx.fillStyle = color; 
         ctx.font = "bold 14px serif";
         ctx.fillText(label, endX + (dx > 0 ? 5 : -15), endY - 5);
     }
 }
 
 function drawAreaGraph_4_2(x, y, w, h, data, dtTotal) {
-    ctx.strokeStyle = "#333";
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = "#333"; 
+    ctx.lineWidth = 1; 
     ctx.strokeRect(x, y, w, h);
-
+    
     let midY = y + h / 2;
-    ctx.beginPath();
-    ctx.moveTo(x, midY);
-    ctx.lineTo(x + w, midY);
+    ctx.beginPath(); 
+    ctx.moveTo(x, midY); 
+    ctx.lineTo(x + w, midY); 
     ctx.stroke();
-
-    ctx.fillStyle = "#333";
-    ctx.textAlign = "center";
+    
+    ctx.fillStyle = "#333"; 
+    ctx.textAlign = "center"; 
     ctx.font = "12px sans-serif";
     ctx.fillText("Force vs Time", x + w / 2, y - 5);
-
-    if (data.length > 0) {
+    
+    if (data && data.length > 0) {
         let tMax = Math.max(dtTotal * 1.5, 5.0);
         let fMax = 220;
-
+        
         ctx.fillStyle = "rgba(142, 68, 173, 0.3)";
-        ctx.beginPath();
+        ctx.beginPath(); 
         ctx.moveTo(x, midY);
         
         for (let i = 0; i < data.length; i++) {
@@ -10634,46 +10646,148 @@ function drawAreaGraph_4_2(x, y, w, h, data, dtTotal) {
 }
 
 function drawMomentumBars_4_2(x, y, w, h) {
-    ctx.strokeStyle = "#333";
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = "#333"; 
+    ctx.lineWidth = 1; 
     ctx.strokeRect(x, y, w, h);
-
+    
     let midY = y + h / 2;
-    ctx.beginPath();
-    ctx.moveTo(x, midY);
-    ctx.lineTo(x + w, midY);
+    ctx.beginPath(); 
+    ctx.moveTo(x, midY); 
+    ctx.lineTo(x + w, midY); 
     ctx.stroke();
-
-    ctx.fillStyle = "#333";
-    ctx.textAlign = "center";
+    
+    ctx.fillStyle = "#333"; 
+    ctx.textAlign = "center"; 
     ctx.fillText("Momentum Change", x + w / 2, y - 5);
-
+    
     let scale = (h / 2) / 1000;
-
+    
     // Initial Momentum
-    let p0 = state.m * (state.v0 || 0);
+    let p0 = state.m * state.v0;
     let h0 = p0 * scale;
-    ctx.fillStyle = "#3498db";
+    ctx.fillStyle = "#3498db"; 
     ctx.fillRect(x + 30, midY - h0, 40, h0);
-
+    
     // Impulse
-    let j = state.burning ? (state.F * state.t) : (state.F * state.dtBurn);
+    let j = 0;
+    if (state.burning) {
+        j = state.F * state.t;
+    } else {
+        j = state.F * state.dtBurn;
+    }
     if (state.t === 0) j = 0;
+    
     let hj = j * scale;
-    ctx.fillStyle = "#8e44ad";
+    ctx.fillStyle = "#8e44ad"; 
     ctx.fillRect(x + 105, midY - hj, 40, hj);
-
+    
     // Final Momentum
     let pf = state.m * state.v;
     let hf = pf * scale;
-    ctx.fillStyle = "#27ae60";
+    ctx.fillStyle = "#27ae60"; 
     ctx.fillRect(x + 180, midY - hf, 40, hf);
-
-    // Math Symbols
-    ctx.fillStyle = "#333";
+    
+    ctx.fillStyle = "#333"; 
     ctx.font = "bold 16px sans-serif";
     ctx.fillText("+", x + 90, midY - 10);
     ctx.fillText("=", x + 165, midY - 10);
+}
+
+function renderQuestions_4_2() {
+    let div = document.getElementById('u4-2-questions');
+    const v = (text) => `<i class="var">${text}</i>`;
+
+    if (state.level === 0) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#2980b9;">Level 1: Launch Impulse</h4>
+            <p>Cart starts at rest (${v('m')} = 10 kg).</p>
+            <p>Apply Force ${v('F')} = <b>50 N</b> for ${v('&Delta;t')} = <b>3.0 s</b>.</p>
+            <p>Calculate the final velocity ${v('v')}.</p>
+            <div style="margin-top:10px;">
+                <input type="number" id="ans-1" placeholder="m/s" style="width:80px; padding:4px;" 
+                       onkeypress="if(event.key==='Enter') checkAnswer_4_2(0)"> 
+                <button onclick="checkAnswer_4_2(0)" style="cursor:pointer; padding:4px 8px;">Check</button>
+            </div>
+            <div id="fb-0"></div>
+        `;
+    } else if (state.level === 1) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#c0392b;">Level 2: The Full Stop</h4>
+            <p>Cart is moving at <b>20 m/s</b> (${v('m')} = 10 kg).</p>
+            <p>You have a braking thruster of ${v('F')} = <b>-50 N</b>.</p>
+            <p>How long (${v('&Delta;t')}) must you burn to stop it exactly?</p>
+            <div style="margin-top:10px;">
+                <input type="number" id="ans-2" placeholder="seconds" style="width:80px; padding:4px;" 
+                       onkeypress="if(event.key==='Enter') checkAnswer_4_2(1)"> 
+                <button onclick="checkAnswer_4_2(1)" style="cursor:pointer; padding:4px 8px;">Check</button>
+            </div>
+            <div id="fb-1"></div>
+        `;
+    } else if (state.level === 2) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 3: Soft Landing</h4>
+            <p>Cart moving at <b>20 m/s</b> (${v('m')} = 10 kg).</p>
+            <p>Stop the cart ($v_f=0$) without exceeding magnitude <b>|40 N|</b> of force.</p>
+            <p>Adjust ${v('F')} and ${v('&Delta;t')} to bring it to a stop.</p>
+            <div style="margin-top:10px;">
+                <button onclick="checkAnswer_4_2(2)" style="padding:5px 15px; cursor:pointer;">I Stopped It!</button>
+            </div>
+            <div id="fb-2"></div>
+        `;
+    } else {
+        div.innerHTML = `
+            <h3 style="color:#f39c12; margin:0;">&#9733; IMPULSE ENGINEER &#9733;</h3>
+            <p>You have mastered Impulse and Momentum!</p>
+        `;
+    }
+}
+
+function checkAnswer_4_2(lvl) {
+    let correct = false;
+    let fb = document.getElementById('fb-' + lvl);
+    
+    if (lvl === 0) {
+        let val = parseFloat(document.getElementById('ans-1').value);
+        if (state.F === 50 && state.dtBurn === 3.0 && Math.abs(val - 15.0) < 0.5) {
+            correct = true;
+        } else if (state.F !== 50 || state.dtBurn !== 3.0) {
+             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Set sliders to F=50, t=3.0 first!</span>`;
+             return;
+        }
+    } else if (lvl === 1) {
+        let val = parseFloat(document.getElementById('ans-2').value);
+        if (state.F === -50 && Math.abs(val - 4.0) < 0.2) {
+            correct = true;
+        } else if (state.F !== -50) {
+             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Set Force to -50 N!</span>`;
+             return;
+        }
+    } else if (lvl === 2) {
+        if (!state.running && Math.abs(state.v) < 1.0 && Math.abs(state.F) <= 40 && Math.abs(state.F) > 0) {
+            correct = true;
+        } else if (Math.abs(state.F) > 40) {
+            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Force magnitude exceeded 40N!</span>`;
+            return;
+        } else {
+            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Run the sim and stop the cart!</span>`;
+            return;
+        }
+    }
+
+    if (correct) {
+        fb.innerHTML = "<span style='color:green; font-weight:bold;'>Correct! Unlocking next step...</span>";
+        setTimeout(() => {
+            state.level++;
+            saveProgress('4.2', state.level);
+            if (state.level >= 3) {
+                document.getElementById('u4-2-badge').style.display = 'block';
+            }
+            renderQuestions_4_2();
+            reset_4_2();
+        }, 1500);
+    } else {
+        fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Incorrect. Check your math!</span>`;
+    }
 }
 
 function checkLevel_4_2() {
