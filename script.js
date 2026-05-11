@@ -12875,3 +12875,539 @@ function checkAnswer_5_2(lvl) {
         fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Incorrect. Check your math!</span>`;
     }
 }
+
+// ===============================================
+// === UNIT 5.3: NET TORQUE (Gold Standard v4.6) ===
+// ===============================================
+
+function setup_5_3() {
+    canvas.width = 700; 
+    canvas.height = 640; 
+
+    document.getElementById('sim-title').innerText = "5.3 Net Torque";
+    
+    document.getElementById('sim-desc').innerHTML = `
+        <h3 style="margin-top:0; margin-bottom:10px;">The Seesaw of Physics</h3>
+        <p style="margin-bottom:10px; line-height:1.4;">
+        When multiple torques act on an object, they compete. Counter-clockwise (CCW) is positive, Clockwise (CW) is negative.
+        <br><b>Equation:</b> <i class="var">&tau;<sub>net</sub></i> = &Sigma; <i class="var">&tau;</i> = <i class="var">&tau;<sub>ccw</sub></i> - <i class="var">&tau;<sub>cw</sub></i>
+        <br><i><b>Mission:</b> Master the balance of forces and distances!</i></p>`;
+
+    document.getElementById('sim-controls').innerHTML = `
+        <div style="background:#eef2f3; padding:10px; border-radius:5px; margin-bottom:15px; border:1px solid #ccc; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; flex-direction:column; gap:5px;">
+                <label style="font-weight:bold; margin:0;">Mode:</label>
+                <div style="display:flex; gap:15px;">
+                    <label style="cursor:pointer; margin:0; display:flex; align-items:center;">
+                        <input type="radio" name="sim-mode" value="guided" checked onchange="setMode_5_3('guided')" style="margin-right:5px;"> Guided
+                    </label>
+                    <label style="cursor:pointer; margin:0; display:flex; align-items:center;">
+                        <input type="radio" name="sim-mode" value="challenge" onchange="setMode_5_3('challenge')" style="margin-right:5px;"> Full Version
+                    </label>
+                </div>
+            </div>
+            <div id="u5-3-badge" style="display:none; font-weight:bold; color:#f39c12; font-family:sans-serif; text-align:right;">
+                <span style="font-size:1.5em; vertical-align:middle;">&#9733;</span> BALANCER
+            </div>
+        </div>
+
+        <div id="calc-5-3" style="background:white; border:1px solid #2c3e50; border-radius:4px; padding:10px; margin-bottom:15px; font-family:'Times New Roman', serif; font-size:1.0em; line-height:1.6;">
+        </div>
+
+        <div class="control-group" style="border-left: 4px solid #c0392b; padding-left: 10px;">
+            <label style="color:#c0392b; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>Red Mass (<i class="var">m<sub>1</sub></i>):</span>
+                <span><span id="v-m1">10.0</span> kg</span>
+            </label>
+            <input type="range" id="in-m1" class="phys-slider" min="1.0" max="20.0" step="1.0" value="10.0" 
+                oninput="updateState_5_3('m1', this.value)">
+            
+            <label style="color:#c0392b; font-weight:bold; display:flex; justify-content:space-between; margin-top:5px;">
+                <span>Red Radius (<i class="var">r<sub>1</sub></i>):</span>
+                <span><span id="v-r1">2.0</span> m</span>
+            </label>
+            <input type="range" id="in-r1" class="phys-slider" min="0.5" max="5.0" step="0.5" value="2.0" 
+                oninput="updateState_5_3('r1', this.value)">
+        </div>
+
+        <div class="control-group" style="border-left: 4px solid #2980b9; padding-left: 10px; margin-top:10px;">
+            <label style="color:#2980b9; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>Blue Mass (<i class="var">m<sub>2</sub></i>):</span>
+                <span><span id="v-m2">10.0</span> kg</span>
+            </label>
+            <input type="range" id="in-m2" class="phys-slider" min="1.0" max="20.0" step="1.0" value="10.0" 
+                oninput="updateState_5_3('m2', this.value)">
+            
+            <label style="color:#2980b9; font-weight:bold; display:flex; justify-content:space-between; margin-top:5px;">
+                <span>Blue Radius (<i class="var">r<sub>2</sub></i>):</span>
+                <span><span id="v-r2">2.0</span> m</span>
+            </label>
+            <input type="range" id="in-r2" class="phys-slider" min="0.5" max="5.0" step="0.5" value="2.0" 
+                oninput="updateState_5_3('r2', this.value)">
+        </div>
+
+        <div style="margin-top:15px; display:flex; gap:10px;">
+            <button class="btn btn-green" onclick="start_5_3()" id="btn-start">Release Pin</button>
+            <button class="btn btn-red" onclick="reset_5_3()">Reset</button>
+        </div>
+        
+        <div id="u5-3-questions" style="margin-top:20px; border-top:2px solid #eee; padding-top:15px; background:#fafafa; padding:15px; border-radius:5px;">
+        </div>
+    `;
+
+    const preventJump = (e) => {
+        const rect = e.target.getBoundingClientRect();
+        const min = parseFloat(e.target.min);
+        const max = parseFloat(e.target.max);
+        const val = parseFloat(e.target.value);
+        let clientX = e.clientX;
+        if (e.type === 'touchstart') clientX = e.touches[0].clientX;
+        const ratio = (val - min) / (max - min);
+        const clickX = clientX - rect.left;
+        const thumbX = ratio * rect.width;
+        if (Math.abs(clickX - thumbX) > 35) e.preventDefault();
+    };
+
+    document.querySelectorAll('.phys-slider').forEach(s => {
+        s.addEventListener('mousedown', preventJump);
+        s.addEventListener('touchstart', preventJump, {passive: false});
+    });
+
+    reset_5_3();
+}
+
+function updateState_5_3(key, val) {
+    if (state.running) return;
+    
+    state[key] = parseFloat(val);
+    
+    if (key === 'm1') document.getElementById('v-m1').innerText = state.m1.toFixed(1);
+    if (key === 'r1') document.getElementById('v-r1').innerText = state.r1.toFixed(1);
+    if (key === 'm2') document.getElementById('v-m2').innerText = state.m2.toFixed(1);
+    if (key === 'r2') document.getElementById('v-r2').innerText = state.r2.toFixed(1);
+    
+    calcPhysics_5_3();
+    updateCalcDisplay_5_3();
+    draw_5_3();
+}
+
+function setMode_5_3(mode) {
+    state.mode = mode;
+    const qDiv = document.getElementById('u5-3-questions');
+    const badge = document.getElementById('u5-3-badge');
+
+    if (state.level >= 3) {
+        badge.style.display = 'block';
+    } else {
+        badge.style.display = 'none';
+    }
+
+    if (mode === 'challenge') {
+        qDiv.style.display = 'none';
+        
+        // Unlock all sliders
+        ['in-m1', 'in-r1', 'in-m2', 'in-r2'].forEach(id => {
+            document.getElementById(id).disabled = false;
+            document.getElementById(id).parentElement.style.opacity = "1.0";
+        });
+        state.isMystery = false;
+        
+    } else {
+        qDiv.style.display = 'block';
+        renderQuestions_5_3();
+    }
+    
+    updateLocks_5_3();
+    draw_5_3();
+    updateCalcDisplay_5_3();
+}
+
+function updateLocks_5_3() {
+    let sliders = document.querySelectorAll('.phys-slider');
+    let runBtn = document.getElementById('btn-start');
+    let lock = state.running;
+    
+    sliders.forEach(s => {
+        // Handle Mystery Mass lock in Level 3
+        if (state.mode === 'guided' && state.level === 2 && state.isMystery) {
+            if (s.id === 'in-m1' || s.id === 'in-r1') {
+                s.disabled = true;
+                s.parentElement.style.opacity = "0.5";
+                return;
+            }
+        }
+        
+        s.disabled = lock;
+        s.style.opacity = lock ? "0.5" : "1.0";
+    });
+    
+    runBtn.disabled = lock;
+    runBtn.style.opacity = lock ? "0.5" : "1.0";
+}
+
+function calcPhysics_5_3() {
+    let g = 10.0; // Using g=10 for easier mental math in this specific unit
+    
+    // Torque = r * F * sin(90) = r * (mg)
+    state.tau1 = state.r1 * (state.m1 * g); // CCW (Positive)
+    state.tau2 = state.r2 * (state.m2 * g); // CW (Negative)
+    
+    state.tauNet = state.tau1 - state.tau2;
+    
+    // Moment of Inertia approximation for animation
+    state.I = (state.m1 * state.r1 * state.r1) + (state.m2 * state.r2 * state.r2) + 10.0;
+}
+
+function updateCalcDisplay_5_3() {
+    let box = document.getElementById('calc-5-3');
+    if (!box) return;
+    
+    const v = (t) => `<i class="var" style="font-family:'Times New Roman',serif">${t}</i>`;
+    
+    let m1Str = state.isMystery ? "?" : state.m1.toFixed(1);
+    
+    box.innerHTML = `
+        <div style="margin-bottom:10px; font-size: 0.9em; color: #555;">
+            * Assuming ${v('g')} = 10 m/s&sup2; for simple math calculations.
+        </div>
+        <div style="margin-bottom:5px;">
+            ${v('&tau;<sub>net</sub>')} = <span style="color:#c0392b;">${v('&tau;<sub>red</sub>')}</span> - <span style="color:#2980b9;">${v('&tau;<sub>blue</sub>')}</span>
+        </div>
+        <div style="font-size:1.1em;">
+            <b>${state.tauNet.toFixed(1)} N&middot;m</b> = 
+            <span style="color:#c0392b;">(${state.r1.toFixed(1)})(${m1Str})(10)</span> - 
+            <span style="color:#2980b9;">(${state.r2.toFixed(1)})(${state.m2.toFixed(1)})(10)</span>
+        </div>
+    `;
+}
+
+function start_5_3() {
+    if (!state.running) {
+        state.running = true;
+        state.t = 0;
+        state.omega = 0;
+        
+        calcPhysics_5_3();
+        updateLocks_5_3();
+        loop_5_3();
+    }
+}
+
+function reset_5_3() {
+    let savedLevel = loadProgress('5.3'); 
+
+    state = {
+        m1: parseFloat(document.getElementById('in-m1').value),
+        r1: parseFloat(document.getElementById('in-r1').value),
+        m2: parseFloat(document.getElementById('in-m2').value),
+        r2: parseFloat(document.getElementById('in-r2').value),
+        
+        theta: 0.0, 
+        omega: 0.0, 
+        t: 0,
+        
+        tau1: 0,
+        tau2: 0,
+        tauNet: 0,
+        I: 1,
+        
+        running: false,
+        isMystery: false,
+        history: [], 
+        
+        mode: document.querySelector('input[name="sim-mode"]:checked').value,
+        level: savedLevel
+    };
+    
+    // Level 3 Mystery Setup
+    if (state.mode === 'guided' && state.level === 2) {
+        state.isMystery = true;
+        state.m1 = 8.0; // Secret mass
+        state.r1 = 2.0;
+        
+        document.getElementById('in-m1').value = state.m1;
+        document.getElementById('in-r1').value = state.r1;
+        document.getElementById('v-m1').innerText = "???";
+        document.getElementById('v-r1').innerText = "2.0";
+    }
+    
+    calcPhysics_5_3();
+
+    if (state.level >= 3) {
+        document.getElementById('u5-3-badge').style.display = 'block';
+    }
+
+    setMode_5_3(state.mode);
+    updateCalcDisplay_5_3();
+    
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            draw_5_3();
+        });
+    });
+}
+
+function loop_5_3() {
+    if (currentSim !== '5.3') return;
+
+    if (state.running) {
+        let dt = 0.02;
+        state.t += dt;
+        
+        // Physics Engine
+        let alpha = state.tauNet / state.I;
+        state.omega += alpha * dt;
+        state.theta += state.omega * dt;
+        
+        // Stop if it hits the ground (approx 0.3 radians)
+        if (Math.abs(state.theta) > 0.3) {
+            state.running = false;
+            if (state.theta > 0) state.theta = 0.3;
+            if (state.theta < 0) state.theta = -0.3;
+            
+            if (state.mode === 'guided') {
+                checkLevel_5_3();
+            }
+            updateLocks_5_3();
+        }
+        
+        // Stop if it balances perfectly (t > 3s, theta ~ 0)
+        if (state.t > 3.0 && Math.abs(state.tauNet) < 0.1) {
+            state.running = false;
+            state.theta = 0;
+            if (state.mode === 'guided') {
+                checkLevel_5_3();
+            }
+            updateLocks_5_3();
+        }
+    }
+
+    draw_5_3();
+    
+    if (state.running) {
+        requestAnimationFrame(loop_5_3);
+    }
+}
+
+function draw_5_3() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    let cx = 350;
+    let cy = 350;
+    let pxPerM = 50; // 1m = 50px
+    let beamLen = 12 * pxPerM; // 6m on each side
+    
+    // Background
+    ctx.fillStyle = "#ecf0f1"; 
+    ctx.fillRect(0, 0, 700, cy + 150);
+    
+    // Ground
+    ctx.fillStyle = "#95a5a6";
+    ctx.fillRect(0, cy + 150, 700, 150);
+    
+    // Fulcrum (Triangle)
+    ctx.fillStyle = "#7f8c8d";
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx - 30, cy + 150);
+    ctx.lineTo(cx + 30, cy + 150);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Draw Ticks on Fulcrum Base
+    ctx.fillStyle = "rgba(0,0,0,0.1)";
+    for (let i = 1; i <= 5; i++) {
+        let rx = cx + i * pxPerM;
+        let lx = cx - i * pxPerM;
+        ctx.fillRect(rx, cy, 1, 150);
+        ctx.fillRect(lx, cy, 1, 150);
+    }
+
+    // === ROTATING SYSTEM ===
+    ctx.save();
+    ctx.translate(cx, cy);
+    
+    // Remember: standard Math.rotate goes clockwise for positive angles.
+    // In physics, CCW is positive torque. 
+    // tauNet positive -> alpha positive -> omega positive -> theta positive.
+    // To make positive theta CCW on canvas, we must rotate by -theta.
+    ctx.rotate(-state.theta);
+    
+    // Draw Beam
+    ctx.fillStyle = "#f39c12";
+    ctx.fillRect(-beamLen / 2, -10, beamLen, 20);
+    ctx.strokeStyle = "#e67e22";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-beamLen / 2, -10, beamLen, 20);
+    
+    // Ruler Ticks on Beam
+    ctx.fillStyle = "#333";
+    ctx.font = "10px sans-serif";
+    ctx.textAlign = "center";
+    for (let i = 1; i <= 5; i++) {
+        ctx.fillRect(i * pxPerM, -10, 2, 20);
+        ctx.fillText(i + "m", i * pxPerM, -15);
+        
+        ctx.fillRect(-i * pxPerM, -10, 2, 20);
+        ctx.fillText(i + "m", -i * pxPerM, -15);
+    }
+    
+    // Draw Mass 1 (Red, Left Side -> negative X)
+    let box1Size = 20 + (state.isMystery ? 8 : state.m1) * 2; 
+    let x1 = -state.r1 * pxPerM;
+    
+    ctx.fillStyle = "#c0392b";
+    ctx.fillRect(x1 - box1Size / 2, -10 - box1Size, box1Size, box1Size);
+    
+    ctx.fillStyle = "white";
+    ctx.font = "bold 14px sans-serif";
+    if (state.isMystery) {
+        ctx.fillText("?", x1, -10 - box1Size / 2 + 5);
+    } else {
+        ctx.fillText(state.m1.toFixed(0) + "kg", x1, -10 - box1Size / 2 + 5);
+    }
+    
+    // Draw Mass 2 (Blue, Right Side -> positive X)
+    let box2Size = 20 + state.m2 * 2;
+    let x2 = state.r2 * pxPerM;
+    
+    ctx.fillStyle = "#2980b9";
+    ctx.fillRect(x2 - box2Size / 2, -10 - box2Size, box2Size, box2Size);
+    
+    ctx.fillStyle = "white";
+    ctx.font = "bold 14px sans-serif";
+    ctx.fillText(state.m2.toFixed(0) + "kg", x2, -10 - box2Size / 2 + 5);
+    
+    ctx.restore();
+    
+    // Force/Torque Display Text
+    ctx.fillStyle = "#c0392b";
+    ctx.textAlign = "left";
+    ctx.font = "bold 16px sans-serif";
+    ctx.fillText(`CCW Torque: ${state.tau1.toFixed(0)} N·m`, 20, 40);
+    
+    ctx.fillStyle = "#2980b9";
+    ctx.textAlign = "right";
+    ctx.fillText(`CW Torque: ${state.tau2.toFixed(0)} N·m`, 680, 40);
+    
+    ctx.fillStyle = "#8e44ad";
+    ctx.textAlign = "center";
+    ctx.font = "bold 20px sans-serif";
+    ctx.fillText(`Net Torque: ${state.tauNet.toFixed(0)} N·m`, cx, 40);
+    
+    // Pin indicator (Lock status)
+    if (!state.running && state.theta === 0) {
+        ctx.fillStyle = "#34495e";
+        ctx.fillRect(cx - 5, cy - 25, 10, 50);
+        ctx.fillStyle = "white";
+        ctx.font = "10px sans-serif";
+        ctx.fillText("PIN", cx, cy - 30);
+    }
+}
+
+function renderQuestions_5_3() {
+    let div = document.getElementById('u5-3-questions');
+    const v = (text) => `<i class="var">${text}</i>`;
+
+    if (state.level === 0) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#2980b9;">Level 1: The Balance</h4>
+            <p>Set Red Mass = <b>10.0 kg</b>, Red Radius = <b>2.0 m</b>.</p>
+            <p>Set Blue Mass = <b>5.0 kg</b>.</p>
+            <p>Where must you place the Blue Mass (${v('r<sub>2</sub>')}) to balance the beam?</p>
+            <div style="margin-top:10px;">
+                <button onclick="checkAnswer_5_3(0)" style="padding:5px 15px; cursor:pointer;">Release Pin & Test!</button>
+            </div>
+            <div id="fb-0"></div>
+        `;
+    } else if (state.level === 1) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#c0392b;">Level 2: Unbalanced</h4>
+            <p>Assume ${v('g')} = 10 m/s&sup2;.</p>
+            <p>Set Red: ${v('m')} = <b>5.0 kg</b>, ${v('r')} = <b>1.0 m</b>.</p>
+            <p>Set Blue: ${v('m')} = <b>10.0 kg</b>, ${v('r')} = <b>1.5 m</b>.</p>
+            <p>Calculate the magnitude of the Net Torque.</p>
+            <div style="margin-top:10px;">
+                <input type="number" id="ans-2" placeholder="N·m" style="width:80px; padding:4px;" 
+                       onkeypress="if(event.key==='Enter') checkAnswer_5_3(1)"> 
+                <button onclick="checkAnswer_5_3(1)" style="cursor:pointer; padding:4px 8px;">Check</button>
+            </div>
+            <div id="fb-1"></div>
+        `;
+    } else if (state.level === 2) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 3: Mystery Mass</h4>
+            <p>The Red Mass is unknown and locked at <b>2.0 m</b>.</p>
+            <p>Adjust the Blue Mass and Blue Radius until the beam perfectly balances.</p>
+            <p>Calculate the mass of the Red Box.</p>
+            <div style="margin-top:10px;">
+                <input type="number" id="ans-3" placeholder="kg" style="width:80px; padding:4px;" 
+                       onkeypress="if(event.key==='Enter') checkAnswer_5_3(2)"> 
+                <button onclick="checkAnswer_5_3(2)" style="cursor:pointer; padding:4px 8px;">Check</button>
+            </div>
+            <div id="fb-2"></div>
+        `;
+    } else {
+        div.innerHTML = `
+            <h3 style="color:#f39c12; margin:0;">&#9733; BALANCER &#9733;</h3>
+            <p>You have mastered Net Torque and Equilibrium!</p>
+        `;
+    }
+}
+
+function checkAnswer_5_3(lvl) {
+    let correct = false;
+    let fb = document.getElementById('fb-' + lvl);
+    
+    if (lvl === 0) {
+        // Red: 10 * 2 = 20. Blue: 5 * r2 = 20. r2 must be 4.0.
+        if (state.m1 === 10.0 && state.r1 === 2.0 && state.m2 === 5.0 && state.r2 === 4.0) {
+            if (!state.running && state.t > 0 && Math.abs(state.tauNet) < 0.1) {
+                correct = true;
+            } else {
+                 fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>It's balanced, but hit "Release Pin" to prove it!</span>`;
+                 return;
+            }
+        } else {
+             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Beam is not balanced or sliders are incorrect!</span>`;
+             return;
+        }
+    } else if (lvl === 1) {
+        let val = parseFloat(document.getElementById('ans-2').value);
+        // Red tau = 5 * 10 * 1 = 50. Blue tau = 10 * 10 * 1.5 = 150. Net = 100.
+        if (state.m1 === 5.0 && state.r1 === 1.0 && state.m2 === 10.0 && state.r2 === 1.5) {
+            if (Math.abs(val - 100.0) < 1.0) correct = true;
+        } else {
+             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Set sliders to the values in the prompt first!</span>`;
+             return;
+        }
+    } else if (lvl === 2) {
+        let val = parseFloat(document.getElementById('ans-3').value);
+        // Mystery mass is 8.0 kg.
+        if (Math.abs(val - 8.0) < 0.2) {
+            correct = true;
+        } else {
+            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Incorrect. Did you balance it first? Use m1*r1 = m2*r2.</span>`;
+            return;
+        }
+    }
+
+    if (correct) {
+        fb.innerHTML = "<span style='color:green; font-weight:bold;'>Correct! Unlocking next step...</span>";
+        setTimeout(() => {
+            state.level++;
+            saveProgress('5.3', state.level);
+            if (state.level >= 3) {
+                document.getElementById('u5-3-badge').style.display = 'block';
+            }
+            renderQuestions_5_3();
+            reset_5_3();
+        }, 1500);
+    } else {
+        fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Incorrect. Check your math!</span>`;
+    }
+}
+
+function checkLevel_5_3() {
+    // Empty function required by the main loop router logic
+}
