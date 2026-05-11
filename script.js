@@ -13075,8 +13075,8 @@ function updateCalcDisplay_5_3() {
         </div>
         <div style="font-size:1.1em;">
             <b>${state.tauNet.toFixed(1)} N&middot;m</b> = 
-            <span style="color:#c0392b;">(${state.r1.toFixed(1)})(${m1Str})(10)</span> - 
-            <span style="color:#2980b9;">(${state.r2.toFixed(1)})(${state.m2.toFixed(1)})(10)</span>
+            <span style="color:#c0392b;">(${state.r1.toFixed(1)} m)(${m1Str} kg)(10 m/s&sup2;)</span> - 
+            <span style="color:#2980b9;">(${state.r2.toFixed(1)} m)(${state.m2.toFixed(1)} kg)(10 m/s&sup2;)</span>
         </div>
     `;
 }
@@ -13400,8 +13400,7 @@ function checkAnswer_5_3(lvl) {
             if (state.level >= 3) {
                 document.getElementById('u5-3-badge').style.display = 'block';
             }
-            renderQuestions_5_3();
-            reset_5_3();
+            renderQuestions_5_3();            reset_5_3();
         }, 1500);
     } else {
         fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Incorrect. Check your math!</span>`;
