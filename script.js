@@ -13412,7 +13412,7 @@ function checkLevel_5_3() {
 }
 
 // ===============================================
-// === UNIT 5.4: ROTATIONAL INERTIA (Gold Standard v4.6) ===
+// === UNIT 5.4: ROTATIONAL INERTIA (Gold Standard v4.7) ===
 // ===============================================
 
 function setup_5_4() {
@@ -13576,8 +13576,7 @@ function updateLocks_5_4() {
 }
 
 function calcPhysics_5_4() {
-    // 2 masses rotating around a center point (massless rod assumption)
-    state.I = 2 * state.m * (state.r * state.r) + 0.1; // 0.1 to prevent division by zero
+    state.I = 2 * state.m * (state.r * state.r) + 0.1; // 0.1 prevents division by zero
     state.alpha = state.tauApp / state.I;
 }
 
@@ -13649,7 +13648,6 @@ function reset_5_4() {
             state.m = 10.0; state.tauApp = 50; state.r = 2.0;
         }
         
-        // Push values to sliders
         document.getElementById('in-m').value = state.m;
         document.getElementById('in-r').value = state.r;
         document.getElementById('in-tau').value = state.tauApp;
@@ -13691,11 +13689,9 @@ function loop_5_4() {
             });
         }
         
-        // Stop after 2 seconds for clean measurement
         if (state.t >= 2.0) {
             state.running = false;
             
-            // AUTOMATIC EVALUATION OF THE LEVEL
             if (state.mode === 'guided') {
                 checkLevel_5_4();
             }
@@ -13721,8 +13717,15 @@ function draw_5_4() {
     ctx.strokeStyle = "rgba(0,0,0,0.05)";
     ctx.lineWidth = 1;
     for (let i = 0; i < 700; i += pxPerM) {
-        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 500); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(700, i); ctx.stroke();
+        ctx.beginPath(); 
+        ctx.moveTo(i, 0); 
+        ctx.lineTo(i, 500); 
+        ctx.stroke();
+        
+        ctx.beginPath(); 
+        ctx.moveTo(0, i); 
+        ctx.lineTo(700, i); 
+        ctx.stroke();
     }
     
     // Draw Rotation Center
@@ -13736,7 +13739,7 @@ function draw_5_4() {
     ctx.rotate(state.theta);
     
     // Draw Rod
-    let rodLen = 3.0 * pxPerM * 2; // Max radius visual
+    let rodLen = 3.0 * pxPerM * 2; 
     ctx.strokeStyle = "#95a5a6";
     ctx.lineWidth = 6;
     ctx.beginPath();
@@ -13752,7 +13755,7 @@ function draw_5_4() {
     }
     
     // Draw Masses
-    let boxSize = 20 + state.m; // Visual scaling
+    let boxSize = 20 + state.m; 
     let rPx = state.r * pxPerM;
     
     ctx.fillStyle = "#c0392b";
@@ -13766,22 +13769,31 @@ function draw_5_4() {
     
     ctx.restore();
     
-    // Draw Torque Direction Indicator
+    // Dynamic Torque Direction Indicator (Purple Arc)
     if (state.tauApp > 0) {
-        ctx.strokeStyle = "rgba(142, 68, 173, 0.5)";
-        ctx.lineWidth = 8;
+        let tauRatio = state.tauApp / 100;
+        let arcLen = 0.5 + (tauRatio * 2.0); // Arc spans from 0.5 to 2.5 radians based on torque
+        
+        let startAng = -Math.PI / 4;
+        let endAng = startAng - arcLen; // Negative angle draws Counter-Clockwise in Canvas
+        
+        ctx.strokeStyle = "rgba(142, 68, 173, 0.8)";
+        ctx.lineWidth = 4 + (tauRatio * 8); // Thickness scales with torque
+        
         ctx.beginPath();
-        ctx.arc(cx, cy, 80, -Math.PI / 4, Math.PI / 2);
+        ctx.arc(cx, cy, 70, startAng, endAng, true); // true = anticlockwise drawing
         ctx.stroke();
         
-        // Arrowhead
-        ctx.fillStyle = "rgba(142, 68, 173, 0.5)";
-        let arrowX = cx + 80 * Math.cos(Math.PI / 2);
-        let arrowY = cy + 80 * Math.sin(Math.PI / 2);
+        // Perfect Tangent Arrowhead Calculation
+        let tAng = endAng - Math.PI / 2; // Tangent points 90 degrees outward from the end of the arc
+        let aX = cx + 70 * Math.cos(endAng);
+        let aY = cy + 70 * Math.sin(endAng);
+        
+        ctx.fillStyle = "rgba(142, 68, 173, 1.0)";
         ctx.beginPath();
-        ctx.moveTo(arrowX, arrowY);
-        ctx.lineTo(arrowX - 15, arrowY - 10);
-        ctx.lineTo(arrowX + 5, arrowY - 15);
+        ctx.moveTo(aX + 12 * Math.cos(tAng), aY + 12 * Math.sin(tAng));
+        ctx.lineTo(aX + 15 * Math.cos(tAng + 2.6), aY + 15 * Math.sin(tAng + 2.6));
+        ctx.lineTo(aX + 15 * Math.cos(tAng - 2.6), aY + 15 * Math.sin(tAng - 2.6));
         ctx.fill();
     }
     
@@ -13804,7 +13816,12 @@ function draw_5_4() {
     ctx.lineTo(700, panelY);
     ctx.stroke();
     
-    drawMiniGraph_5_4(50, panelY + 20, 600, 120, state.history, 'w', [0, 10], "Angular Velocity (rad/s)");
+    // Dynamic Graph Max Range Calculation
+    // Ensure the graph scales to hold the maximum possible omega achieved over 2.0s
+    let theoreticalMaxW = state.alpha * 2.0;
+    let graphMax = Math.max(10, Math.ceil(theoreticalMaxW / 5) * 5); // Rounds up to nearest 5
+    
+    drawMiniGraph_5_4(50, panelY + 20, 600, 120, state.history, 'w', [0, graphMax], "Angular Velocity (rad/s)");
 }
 
 function drawMiniGraph_5_4(x, y, w, h, data, key, range, label) {
@@ -13834,7 +13851,7 @@ function drawMiniGraph_5_4(x, y, w, h, data, key, range, label) {
     ctx.textAlign = "right";
     ctx.fillText(range[1], x - 5, y + 10);
     ctx.fillText("0", x - 5, y + h);
-    ctx.fillText("2.0s", x + w, y + h + 15);
+    ctx.fillText("2.0 s", x + w + 10, y + h + 15);
     
     if (data.length > 0) {
         let pxPerVal = h / range[1];
@@ -13852,8 +13869,11 @@ function drawMiniGraph_5_4(x, y, w, h, data, key, range, label) {
             let px = x + (p.t / tMax) * w;
             let py = (y + h) - (val * pxPerVal);
             
-            if (i === 0) ctx.moveTo(px, py);
-            else ctx.lineTo(px, py);
+            if (i === 0) {
+                ctx.moveTo(px, py);
+            } else {
+                ctx.lineTo(px, py);
+            }
         }
         ctx.stroke();
     }
@@ -13891,7 +13911,7 @@ function renderQuestions_5_4() {
         div.innerHTML = `
             <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 3: The Target Speed</h4>
             <p>Mass is locked at <b>10.0 kg</b>. Torque is locked at <b>50 N&middot;m</b>.</p>
-            <p>You need to hit a target Angular Velocity of exactly <b>5.0 rad/s</b> at the 2.0-second mark.</p>
+            <p>You need to hit a target Angular Velocity of exactly <b>10.0 rad/s</b> at the 2.0-second mark.</p>
             <p>Adjust the <b>Radius</b> slider to alter the inertia, then hit "Apply Torque" to test it!</p>
             <div id="fb-2" style="margin-top:10px; font-weight:bold;">Waiting for run...</div>
         `;
@@ -13909,17 +13929,17 @@ function checkAnswer_5_4(lvl) {
     
     if (lvl === 0) {
         let val = parseFloat(document.getElementById('ans-1').value);
-        // I = 2 * 5 * 2^2 = 40.
-        if (state.m === 5.0 && state.r === 2.0 && Math.abs(val - 40.0) < 1.0) correct = true;
-        else if (state.m !== 5.0 || state.r !== 2.0) {
+        if (state.m === 5.0 && state.r === 2.0 && Math.abs(val - 40.0) < 1.0) {
+            correct = true;
+        } else if (state.m !== 5.0 || state.r !== 2.0) {
              fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Set sliders to m=5, r=2 first!</span>`;
              return;
         }
     } else if (lvl === 1) {
         let val = parseFloat(document.getElementById('ans-2').value);
-        // alpha = 20 / 40 = 0.5.
-        if (state.tauApp === 20 && Math.abs(val - 0.5) < 0.1) correct = true;
-        else if (state.tauApp !== 20) {
+        if (state.tauApp === 20 && Math.abs(val - 0.5) < 0.1) {
+            correct = true;
+        } else if (state.tauApp !== 20) {
              fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Ensure Applied Torque is 20!</span>`;
              return;
         }
@@ -13941,13 +13961,14 @@ function checkAnswer_5_4(lvl) {
     }
 }
 
-// THIS FUNCTION AUTOMATICALLY EVALUATES LEVEL 3 WHEN THE TIMER HITS 2.0s
 function checkLevel_5_4() {
     if (state.mode === 'guided' && state.level === 2) {
         let fb = document.getElementById('fb-2');
         
-        // Target omega is 5.0 rad/s
-        if (Math.abs(state.omega - 5.0) < 0.2) {
+        // Target omega is 10.0 rad/s.
+        // alpha = 50 / (2*10*r^2) = 2.5 / r^2. 
+        // omega at 2s = alpha*2 = 5 / r^2 = 10 => r^2 = 0.5 => r = ~0.7
+        if (Math.abs(state.omega - 10.0) < 0.5) {
             fb.innerHTML = "<span style='color:green;'>Perfect! You hit the target speed! Unlocking mastery...</span>";
             setTimeout(() => {
                 state.level++;
@@ -13957,9 +13978,7 @@ function checkLevel_5_4() {
                 reset_5_4();
             }, 2000);
         } else {
-            fb.innerHTML = `<span style='color:#c0392b;'>Missed! Your speed was ${state.omega.toFixed(1)} rad/s. Aim for 5.0. Change the Radius and try again.</span>`;
+            fb.innerHTML = `<span style='color:#c0392b;'>Missed! Your speed was ${state.omega.toFixed(1)} rad/s. Aim for 10.0. Change the Radius and try again.</span>`;
         }
     }
 }
-
-
