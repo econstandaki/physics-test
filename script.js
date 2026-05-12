@@ -13772,20 +13772,21 @@ function draw_5_4() {
     // Dynamic Torque Direction Indicator (Purple Arc)
     if (state.tauApp > 0) {
         let tauRatio = state.tauApp / 100;
-        let arcLen = 0.5 + (tauRatio * 2.0); // Arc spans from 0.5 to 2.5 radians based on torque
+        let arcLen = 0.5 + (tauRatio * 2.0); // Arc length scales with torque
         
-        let startAng = -Math.PI / 4;
-        let endAng = startAng - arcLen; // Negative angle draws Counter-Clockwise in Canvas
+        let startAng = -Math.PI / 2; // Start at 12 o'clock
+        let endAng = startAng + arcLen; // Positive angle adds clockwise in canvas
         
         ctx.strokeStyle = "rgba(142, 68, 173, 0.8)";
         ctx.lineWidth = 4 + (tauRatio * 8); // Thickness scales with torque
         
         ctx.beginPath();
-        ctx.arc(cx, cy, 70, startAng, endAng, true); // true = anticlockwise drawing
+        // false = draw clockwise, aligning with the bar's spin
+        ctx.arc(cx, cy, 70, startAng, endAng, false); 
         ctx.stroke();
         
-        // Perfect Tangent Arrowhead Calculation
-        let tAng = endAng - Math.PI / 2; // Tangent points 90 degrees outward from the end of the arc
+        // Perfect Tangent Arrowhead Calculation (CW tangent is endAng + 90 deg)
+        let tAng = endAng + Math.PI / 2; 
         let aX = cx + 70 * Math.cos(endAng);
         let aY = cy + 70 * Math.sin(endAng);
         
@@ -13817,9 +13818,8 @@ function draw_5_4() {
     ctx.stroke();
     
     // Dynamic Graph Max Range Calculation
-    // Ensure the graph scales to hold the maximum possible omega achieved over 2.0s
     let theoreticalMaxW = state.alpha * 2.0;
-    let graphMax = Math.max(10, Math.ceil(theoreticalMaxW / 5) * 5); // Rounds up to nearest 5
+    let graphMax = Math.max(10, Math.ceil(theoreticalMaxW / 5) * 5); 
     
     drawMiniGraph_5_4(50, panelY + 20, 600, 120, state.history, 'w', [0, graphMax], "Angular Velocity (rad/s)");
 }
