@@ -14658,3 +14658,635 @@ function checkLevel_5_6() {
         }
     }
 }
+
+// ===============================================
+// === UNIT 6.1: ROTATIONAL KINETIC ENERGY (Gold Standard v4.8) ===
+// ===============================================
+
+function setup_6_1() {
+    canvas.width = 700; 
+    canvas.height = 640; 
+
+    document.getElementById('sim-title').innerText = "6.1 Rotational Kinetic Energy";
+    
+    document.getElementById('sim-desc').innerHTML = `
+        <h3 style="margin-top:0; margin-bottom:10px;">The Flywheel Battery</h3>
+        <p style="margin-bottom:10px; line-height:1.4;">
+        A spinning object stores Rotational Kinetic Energy ($K_{rot}$). This energy depends on its Rotational Inertia ($I$) and the <b>square</b> of its angular velocity ($\omega$).
+        <br><b>Equation:</b> <i class="var">K<sub>rot</sub></i> = &frac12;<i class="var">I&omega;</i>&sup2;
+        <br><i><b>Mission:</b> Store energy in the flywheel, then engage the generator to drain it!</i></p>`;
+
+    document.getElementById('sim-controls').innerHTML = `
+        <div style="background:#eef2f3; padding:10px; border-radius:5px; margin-bottom:15px; border:1px solid #ccc; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; flex-direction:column; gap:5px;">
+                <label style="font-weight:bold; margin:0;">Mode:</label>
+                <div style="display:flex; gap:15px;">
+                    <label style="cursor:pointer; margin:0; display:flex; align-items:center;">
+                        <input type="radio" name="sim-mode" value="guided" checked onchange="setMode_6_1('guided')" style="margin-right:5px;"> Guided
+                    </label>
+                    <label style="cursor:pointer; margin:0; display:flex; align-items:center;">
+                        <input type="radio" name="sim-mode" value="challenge" onchange="setMode_6_1('challenge')" style="margin-right:5px;"> Full Version
+                    </label>
+                </div>
+            </div>
+            <div id="u6-1-badge" style="display:none; font-weight:bold; color:#f39c12; font-family:sans-serif; text-align:right;">
+                <span style="font-size:1.5em; vertical-align:middle;">&#9733;</span> GRID MANAGER
+            </div>
+        </div>
+
+        <div id="calc-6-1" style="background:white; border:1px solid #2c3e50; border-radius:4px; padding:10px; margin-bottom:15px; font-family:'Times New Roman', serif; font-size:1.0em; line-height:1.6;">
+        </div>
+
+        <div class="control-group" style="border-left: 4px solid #c0392b; padding-left: 10px;">
+            <label style="color:#c0392b; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>Mass per Block (<i class="var">m</i>):</span>
+                <span><span id="v-m">10.0</span> kg</span>
+            </label>
+            <input type="range" id="in-m" class="phys-slider" min="2.0" max="20.0" step="1.0" value="10.0" 
+                oninput="updateState_6_1('m', this.value)">
+        </div>
+
+        <div class="control-group" style="border-left: 4px solid #2980b9; padding-left: 10px; margin-top:10px;">
+            <label style="color:#2980b9; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>Radius (<i class="var">r</i>):</span>
+                <span><span id="v-r">2.0</span> m</span>
+            </label>
+            <input type="range" id="in-r" class="phys-slider" min="0.5" max="3.0" step="0.5" value="2.0" 
+                oninput="updateState_6_1('r', this.value)">
+        </div>
+
+        <div class="control-group" style="border-left: 4px solid #8e44ad; padding-left: 10px; margin-top:10px;">
+            <label style="color:#8e44ad; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>Initial Spin (<i class="var">&omega;<sub>0</sub></i>):</span>
+                <span><span id="v-w">5.0</span> rad/s</span>
+            </label>
+            <input type="range" id="in-w" class="phys-slider" min="1.0" max="15.0" step="1.0" value="5.0" 
+                oninput="updateState_6_1('w', this.value)">
+        </div>
+
+        <div style="margin-top:15px; display:flex; gap:10px;">
+            <button class="btn btn-green" onclick="start_6_1()" id="btn-start">Engage Generator</button>
+            <button class="btn btn-red" onclick="reset_6_1()">Reset</button>
+        </div>
+        
+        <div id="u6-1-questions" style="margin-top:20px; border-top:2px solid #eee; padding-top:15px; background:#fafafa; padding:15px; border-radius:5px;">
+        </div>
+    `;
+
+    const preventJump = (e) => {
+        const rect = e.target.getBoundingClientRect();
+        const min = parseFloat(e.target.min);
+        const max = parseFloat(e.target.max);
+        const val = parseFloat(e.target.value);
+        let clientX = e.clientX;
+        if (e.type === 'touchstart') clientX = e.touches[0].clientX;
+        const ratio = (val - min) / (max - min);
+        const clickX = clientX - rect.left;
+        const thumbX = ratio * rect.width;
+        if (Math.abs(clickX - thumbX) > 35) e.preventDefault();
+    };
+
+    document.querySelectorAll('.phys-slider').forEach(s => {
+        s.addEventListener('mousedown', preventJump);
+        s.addEventListener('touchstart', preventJump, {passive: false});
+    });
+
+    reset_6_1();
+}
+
+function updateState_6_1(key, val) {
+    if (state.running) return;
+    
+    state[key] = parseFloat(val);
+    
+    if (key === 'm') document.getElementById('v-m').innerText = state.m.toFixed(1);
+    if (key === 'r') document.getElementById('v-r').innerText = state.r.toFixed(1);
+    if (key === 'w') document.getElementById('v-w').innerText = state.w.toFixed(1);
+    
+    calcPhysics_6_1();
+    updateCalcDisplay_6_1();
+    draw_6_1();
+}
+
+function setMode_6_1(mode) {
+    state.mode = mode;
+    const qDiv = document.getElementById('u6-1-questions');
+    const badge = document.getElementById('u6-1-badge');
+
+    if (state.level >= 3) {
+        badge.style.display = 'block';
+    } else {
+        badge.style.display = 'none';
+    }
+
+    if (mode === 'challenge') {
+        qDiv.style.display = 'none';
+        
+        ['in-m', 'in-r', 'in-w'].forEach(id => {
+            document.getElementById(id).disabled = false;
+            document.getElementById(id).parentElement.style.opacity = "1.0";
+        });
+        
+    } else {
+        qDiv.style.display = 'block';
+        renderQuestions_6_1();
+    }
+    
+    updateLocks_6_1();
+    draw_6_1();
+    updateCalcDisplay_6_1();
+}
+
+function updateLocks_6_1() {
+    let sliders = document.querySelectorAll('.phys-slider');
+    let runBtn = document.getElementById('btn-start');
+    let lock = state.running;
+    
+    sliders.forEach(s => {
+        if (state.mode === 'guided') {
+            if (state.level === 0 && s.id === 'in-m') {
+                s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+            }
+            if (state.level === 1 && (s.id === 'in-m' || s.id === 'in-r')) {
+                s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+            }
+            if (state.level === 2 && s.id === 'in-r') {
+                s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+            }
+        }
+        
+        s.disabled = lock;
+        s.style.opacity = lock ? "0.5" : "1.0";
+    });
+    
+    runBtn.disabled = lock;
+    runBtn.style.opacity = lock ? "0.5" : "1.0";
+}
+
+function calcPhysics_6_1() {
+    // I = 2 * m * r^2 (Two point masses)
+    state.I = 2 * state.m * (state.r * state.r);
+    
+    // Initial Kinetic Energy
+    state.kRotInit = 0.5 * state.I * (state.w * state.w);
+    
+    // Constant Generator Braking Torque
+    state.tauGen = 100.0; // 100 N*m braking torque
+    state.alpha = state.tauGen / state.I;
+    
+    // Calculate total time to stop for dynamic graph scaling
+    if (state.alpha > 0) {
+        state.tStop = state.w / state.alpha;
+    } else {
+        state.tStop = 0.1;
+    }
+}
+
+function updateCalcDisplay_6_1() {
+    let box = document.getElementById('calc-6-1');
+    if (!box) return;
+    
+    const v = (t) => `<i class="var" style="font-family:'Times New Roman',serif">${t}</i>`;
+    
+    // Dynamic readouts (shows live drain if running)
+    let currentK = state.running ? state.currentK : state.kRotInit;
+    let currentW = state.running ? state.currentW : state.w;
+    
+    box.innerHTML = `
+        <div style="margin-bottom:10px;">
+            <div style="margin-bottom:5px; color:#555;">Rotational Inertia (<i class="var">I</i>):</div>
+            <div style="font-size:1.1em;">
+                ${v('I')} = 2${v('mr')}&sup2; = <b>${state.I.toFixed(1)} kg&middot;m&sup2;</b>
+                <span style="font-size:0.8em; color:#777;">&nbsp;&nbsp;[2 &times; (${state.m.toFixed(1)} kg) &times; (${state.r.toFixed(1)} m)&sup2;]</span>
+            </div>
+        </div>
+        <div>
+            <div style="margin-bottom:5px; color:#555;">Rotational Kinetic Energy (<i class="var">K<sub>rot</sub></i>):</div>
+            <div style="font-size:1.1em;">
+                ${v('K<sub>rot</sub>')} = &frac12;${v('I&omega;')}&sup2; = <b>${currentK.toFixed(0)} J</b>
+                <span style="font-size:0.8em; color:#777;">&nbsp;&nbsp;[&frac12; &times; (${state.I.toFixed(1)} kg&middot;m&sup2;) &times; (${currentW.toFixed(1)} rad/s)&sup2;]</span>
+            </div>
+        </div>
+    `;
+}
+
+function start_6_1() {
+    if (!state.running && state.w > 0) {
+        state.running = true;
+        state.t = 0;
+        state.theta = 0;
+        state.currentW = state.w;
+        state.currentK = state.kRotInit;
+        state.history = [];
+        
+        calcPhysics_6_1();
+        updateLocks_6_1();
+        loop_6_1();
+    }
+}
+
+function reset_6_1() {
+    let savedLevel = loadProgress('6.1'); 
+
+    state = {
+        m: parseFloat(document.getElementById('in-m').value),
+        r: parseFloat(document.getElementById('in-r').value),
+        w: parseFloat(document.getElementById('in-w').value),
+        
+        theta: 0.0, 
+        currentW: 0.0, 
+        currentK: 0.0,
+        t: 0,
+        
+        I: 0,
+        kRotInit: 0,
+        tauGen: 100,
+        alpha: 0,
+        tStop: 0,
+        
+        running: false,
+        history: [], 
+        
+        mode: document.querySelector('input[name="sim-mode"]:checked').value,
+        level: savedLevel
+    };
+    
+    if (state.mode === 'guided') {
+        if (state.level === 0) {
+            state.m = 10.0; state.r = 2.0; state.w = 4.0;
+        } else if (state.level === 1) {
+            state.m = 10.0; state.r = 2.0; state.w = 8.0;
+        } else if (state.level === 2) {
+            state.m = 10.0; state.r = 2.0; state.w = 5.0; // Needs to hit 4000J
+        }
+        
+        document.getElementById('in-m').value = state.m;
+        document.getElementById('in-r').value = state.r;
+        document.getElementById('in-w').value = state.w;
+        document.getElementById('v-m').innerText = state.m.toFixed(1);
+        document.getElementById('v-r').innerText = state.r.toFixed(1);
+        document.getElementById('v-w').innerText = state.w.toFixed(1);
+    }
+    
+    state.currentW = state.w;
+    
+    calcPhysics_6_1();
+    
+    state.currentK = state.kRotInit;
+
+    if (state.level >= 3) {
+        document.getElementById('u6-1-badge').style.display = 'block';
+    }
+
+    setMode_6_1(state.mode);
+    updateCalcDisplay_6_1();
+    
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            draw_6_1();
+        });
+    });
+}
+
+function loop_6_1() {
+    if (currentSim !== '6.1') return;
+
+    if (state.running) {
+        let dt = 0.02;
+        state.t += dt;
+        
+        // Generator applies braking torque
+        state.currentW -= state.alpha * dt;
+        
+        if (state.currentW <= 0) {
+            state.currentW = 0;
+            state.running = false;
+        }
+        
+        state.theta += state.currentW * dt;
+        state.currentK = 0.5 * state.I * (state.currentW * state.currentW);
+        
+        // Record at ~30fps for graphing
+        if (state.t * 60 % 2 < 1) { 
+            state.history.push({
+                t: state.t, 
+                k: state.currentK
+            });
+        }
+        
+        if (!state.running) {
+            // Push final zero state to ensure graph grounds perfectly
+            state.history.push({ t: state.t, k: 0 });
+            
+            if (state.mode === 'guided') {
+                checkLevel_6_1();
+            }
+            updateLocks_6_1();
+        }
+    }
+
+    updateCalcDisplay_6_1();
+    draw_6_1();
+    
+    if (state.running) {
+        requestAnimationFrame(loop_6_1);
+    }
+}
+
+function draw_6_1() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    let cx = 350;
+    let cy = 230;
+    let pxPerM = 50; 
+    
+    // Background Grid
+    ctx.strokeStyle = "rgba(0,0,0,0.05)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 700; i += pxPerM) {
+        ctx.beginPath(); 
+        ctx.moveTo(i, 0); 
+        ctx.lineTo(i, 450); 
+        ctx.stroke();
+        
+        ctx.beginPath(); 
+        ctx.moveTo(0, i); 
+        ctx.lineTo(700, i); 
+        ctx.stroke();
+    }
+    
+    // Draw Generator Base
+    ctx.fillStyle = "#7f8c8d";
+    ctx.fillRect(cx - 40, cy + 20, 80, 200);
+    ctx.fillStyle = "#95a5a6";
+    ctx.fillRect(cx - 50, cy + 180, 100, 40);
+    
+    // Draw Flywheel Rotor (Top Down perspective on a spinning baton)
+    ctx.save();
+    ctx.translate(cx, cy);
+    // Negative theta so mathematically CCW spins visually CCW
+    ctx.rotate(-state.theta);
+    
+    // Draw Rod
+    let rPx = state.r * pxPerM;
+    ctx.strokeStyle = "#34495e";
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(-rPx, 0);
+    ctx.lineTo(rPx, 0);
+    ctx.stroke();
+    
+    // Draw Masses
+    let boxSize = 15 + state.m; // Visual mass scaling
+    
+    ctx.fillStyle = "#c0392b";
+    ctx.fillRect(rPx - boxSize / 2, -boxSize / 2, boxSize, boxSize);
+    ctx.fillRect(-rPx - boxSize / 2, -boxSize / 2, boxSize, boxSize);
+    
+    ctx.strokeStyle = "#e74c3c";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(rPx - boxSize / 2, -boxSize / 2, boxSize, boxSize);
+    ctx.strokeRect(-rPx - boxSize / 2, -boxSize / 2, boxSize, boxSize);
+    
+    ctx.restore();
+    
+    // Center Axle
+    ctx.fillStyle = "#f1c40f";
+    ctx.beginPath();
+    ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#f39c12";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Current Spin Vector (Curved Arrow)
+    if (state.currentW > 0.1) {
+        let arcLen = Math.min(state.currentW * 0.2, Math.PI); // Scale visual arrow
+        let startAng = -Math.PI / 2;
+        let endAng = startAng - arcLen; // Negative draws CCW
+        
+        ctx.strokeStyle = "rgba(46, 204, 113, 0.8)";
+        ctx.lineWidth = 6;
+        
+        ctx.beginPath();
+        ctx.arc(cx, cy, 60, startAng, endAng, true); // true = CCW drawing
+        ctx.stroke();
+        
+        // Arrowhead (CCW Tangent is endAng - 90)
+        let tAng = endAng - Math.PI / 2; 
+        let aX = cx + 60 * Math.cos(endAng);
+        let aY = cy + 60 * Math.sin(endAng);
+        
+        ctx.fillStyle = "rgba(46, 204, 113, 1.0)";
+        ctx.beginPath();
+        ctx.moveTo(aX + 12 * Math.cos(tAng), aY + 12 * Math.sin(tAng));
+        ctx.lineTo(aX + 15 * Math.cos(tAng + 2.6), aY + 15 * Math.sin(tAng + 2.6));
+        ctx.lineTo(aX + 15 * Math.cos(tAng - 2.6), aY + 15 * Math.sin(tAng - 2.6));
+        ctx.fill();
+    }
+    
+    // Warning Light for Generator
+    if (state.running) {
+        ctx.fillStyle = "#e74c3c";
+        ctx.beginPath();
+        ctx.arc(cx, cy + 100, 15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "white";
+        ctx.font = "bold 10px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("DRAIN", cx, cy + 103);
+    }
+    
+    // Bottom Graph Panel (Kinetic Energy vs Time)
+    let panelY = 460;
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, panelY, 700, 180);
+    
+    ctx.strokeStyle = "#ccc";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, panelY);
+    ctx.lineTo(700, panelY);
+    ctx.stroke();
+    
+    // Dynamic Graph Scaling
+    let dynamicTMax = Math.max(state.tStop * 1.1, 2.0); // Minimum 2.0s graph width
+    let dynamicKMax = Math.max(100, Math.ceil(state.kRotInit / 500) * 500); // Round up to nearest 500
+    
+    drawEnergyGraph_6_1(80, panelY + 20, 560, 130, state.history, dynamicTMax, dynamicKMax);
+}
+
+function drawEnergyGraph_6_1(x, y, w, h, data, tMax, kMax) {
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 1;
+    
+    // Axes Boundary
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y + h);
+    ctx.lineTo(x + w, y + h);
+    ctx.stroke();
+    
+    // Labels
+    ctx.fillStyle = "#333";
+    ctx.textAlign = "center";
+    ctx.font = "12px sans-serif";
+    
+    ctx.save();
+    ctx.translate(x - 60, y + h / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText("Kinetic Energy (J)", 0, 0);
+    ctx.restore();
+    
+    ctx.fillText("Time (s)", x + w / 2, y + h + 35);
+    
+    // Axis values
+    ctx.textAlign = "right";
+    ctx.fillText(kMax.toFixed(0), x - 10, y + 10);
+    ctx.fillText("0", x - 10, y + h);
+    ctx.fillText(tMax.toFixed(1) + " s", x + w + 15, y + h + 15);
+    
+    if (data.length > 0) {
+        let pxPerK = h / kMax;
+        
+        ctx.fillStyle = "rgba(46, 204, 113, 0.3)";
+        ctx.beginPath();
+        ctx.moveTo(x, y + h);
+        
+        for (let i = 0; i < data.length; i++) {
+            let p = data[i];
+            let px = x + (p.t / tMax) * w;
+            let py = (y + h) - (p.k * pxPerK);
+            ctx.lineTo(px, py);
+        }
+        
+        let last = data[data.length - 1];
+        let pxEnd = x + (last.t / tMax) * w;
+        ctx.lineTo(pxEnd, y + h);
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.strokeStyle = "#27ae60";
+        ctx.lineWidth = 3;
+        
+        for (let i = 0; i < data.length; i++) {
+            let p = data[i];
+            let px = x + (p.t / tMax) * w;
+            let py = (y + h) - (p.k * pxPerK);
+            
+            if (i === 0) {
+                ctx.moveTo(px, py);
+            } else {
+                ctx.lineTo(px, py);
+            }
+        }
+        ctx.stroke();
+    }
+}
+
+function renderQuestions_6_1() {
+    let div = document.getElementById('u6-1-questions');
+    const v = (text) => `<i class="var">${text}</i>`;
+
+    if (state.level === 0) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#2980b9;">Level 1: Calculating Energy</h4>
+            <p>Set Mass ${v('m')} = <b>10.0 kg</b> and Radius ${v('r')} = <b>2.0 m</b>.</p>
+            <p>Set Initial Spin ${v('&omega;<sub>0</sub>')} = <b>4.0 rad/s</b>.</p>
+            <p>Calculate the initial Rotational Kinetic Energy ${v('K<sub>rot</sub>')}.</p>
+            <div style="margin-top:10px;">
+                <input type="number" id="ans-1" placeholder="Joules" style="width:100px; padding:4px;" 
+                       onkeypress="if(event.key==='Enter') checkAnswer_6_1(0)"> 
+                <button onclick="checkAnswer_6_1(0)" style="cursor:pointer; padding:4px 8px;">Check</button>
+            </div>
+            <div id="fb-0"></div>
+        `;
+    } else if (state.level === 1) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#c0392b;">Level 2: The Squared Law</h4>
+            <p>The previous configuration stored <b>640 J</b> at 4.0 rad/s.</p>
+            <p>You decide to double the spin speed to <b>8.0 rad/s</b>.</p>
+            <p>Calculate the new total Kinetic Energy stored in the flywheel.</p>
+            <div style="margin-top:10px;">
+                <input type="number" id="ans-2" placeholder="Joules" style="width:100px; padding:4px;" 
+                       onkeypress="if(event.key==='Enter') checkAnswer_6_1(1)"> 
+                <button onclick="checkAnswer_6_1(1)" style="cursor:pointer; padding:4px 8px;">Check</button>
+            </div>
+            <div id="fb-1"></div>
+        `;
+    } else if (state.level === 2) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 3: Grid Demands</h4>
+            <p>The electrical grid needs exactly <b>4000 J</b> of energy stored.</p>
+            <p>Radius is locked at <b>2.0 m</b>. Adjust Mass and Spin to reach the target energy.</p>
+            <p>When you have 4000 J stored, hit "Engage Generator" to prove it!</p>
+            <div id="fb-2" style="margin-top:10px; font-weight:bold;">Waiting for generator run...</div>
+        `;
+    } else {
+        div.innerHTML = `
+            <h3 style="color:#f39c12; margin:0;">&#9733; GRID MANAGER &#9733;</h3>
+            <p>You have mastered Rotational Kinetic Energy!</p>
+        `;
+    }
+}
+
+function checkAnswer_6_1(lvl) {
+    let correct = false;
+    let fb = document.getElementById('fb-' + lvl);
+    
+    if (lvl === 0) {
+        let val = parseFloat(document.getElementById('ans-1').value);
+        // I = 2 * 10 * 2^2 = 80. K = 0.5 * 80 * 4^2 = 40 * 16 = 640 J.
+        if (state.m === 10.0 && state.r === 2.0 && state.w === 4.0 && Math.abs(val - 640.0) < 1.0) {
+            correct = true;
+        } else if (state.m !== 10.0 || state.w !== 4.0) {
+             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Set sliders to prompt values first!</span>`;
+             return;
+        }
+    } else if (lvl === 1) {
+        let val = parseFloat(document.getElementById('ans-2').value);
+        // I = 80. w = 8. K = 0.5 * 80 * 64 = 2560 J. (Double the speed -> 4x the energy. 640 * 4 = 2560).
+        if (state.w === 8.0 && Math.abs(val - 2560.0) < 1.0) {
+            correct = true;
+        } else if (state.w !== 8.0) {
+             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Ensure initial spin is set to 8.0!</span>`;
+             return;
+        }
+    }
+
+    if (correct) {
+        fb.innerHTML = "<span style='color:green; font-weight:bold;'>Correct! Unlocking next step...</span>";
+        setTimeout(() => {
+            state.level++;
+            saveProgress('6.1', state.level);
+            if (state.level >= 3) {
+                document.getElementById('u6-1-badge').style.display = 'block';
+            }
+            renderQuestions_6_1();
+            reset_6_1();
+        }, 1500);
+    } else {
+        fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Incorrect. Check your math!</span>`;
+    }
+}
+
+// AUTOMATIC EVALUATION OF LEVEL 3 WHEN THE GENERATOR STOPS
+function checkLevel_6_1() {
+    if (state.mode === 'guided' && state.level === 2) {
+        let fb = document.getElementById('fb-2');
+        
+        // Did they start the simulation with exactly 4000J of energy?
+        if (Math.abs(state.kRotInit - 4000.0) < 20.0) { // Small tolerance
+            fb.innerHTML = "<span style='color:green;'>Perfect! You stored and delivered 4000 J! Unlocking mastery...</span>";
+            setTimeout(() => {
+                state.level++;
+                saveProgress('6.1', state.level);
+                document.getElementById('u6-1-badge').style.display = 'block';
+                renderQuestions_6_1();
+                reset_6_1();
+            }, 2000);
+        } else {
+            fb.innerHTML = `<span style='color:#c0392b;'>Missed! You delivered ${state.kRotInit.toFixed(0)} J to the grid. The target was 4000 J. Reset and adjust sliders.</span>`;
+        }
+    }
+}
