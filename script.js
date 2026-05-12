@@ -13410,3 +13410,556 @@ function checkAnswer_5_3(lvl) {
 function checkLevel_5_3() {
     // Empty function required by the main loop router logic
 }
+
+// ===============================================
+// === UNIT 5.4: ROTATIONAL INERTIA (Gold Standard v4.6) ===
+// ===============================================
+
+function setup_5_4() {
+    canvas.width = 700; 
+    canvas.height = 640; 
+
+    document.getElementById('sim-title').innerText = "5.4 Rotational Inertia";
+    
+    document.getElementById('sim-desc').innerHTML = `
+        <h3 style="margin-top:0; margin-bottom:10px;">Resistance to Rotation</h3>
+        <p style="margin-bottom:10px; line-height:1.4;">
+        Rotational Inertia (<i class="var">I</i>) depends on both the mass and <b>where that mass is located</b> relative to the axis of rotation. Mass further out is harder to spin.
+        <br><b>Equations:</b> <i class="var">I</i> = &Sigma;<i class="var">mr</i>&sup2; &nbsp;|&nbsp; <i class="var">&alpha;</i> = <i class="var">&tau; / I</i>
+        <br><i><b>Mission:</b> Adjust the barbell's mass distribution to control its acceleration!</i></p>`;
+
+    document.getElementById('sim-controls').innerHTML = `
+        <div style="background:#eef2f3; padding:10px; border-radius:5px; margin-bottom:15px; border:1px solid #ccc; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; flex-direction:column; gap:5px;">
+                <label style="font-weight:bold; margin:0;">Mode:</label>
+                <div style="display:flex; gap:15px;">
+                    <label style="cursor:pointer; margin:0; display:flex; align-items:center;">
+                        <input type="radio" name="sim-mode" value="guided" checked onchange="setMode_5_4('guided')" style="margin-right:5px;"> Guided
+                    </label>
+                    <label style="cursor:pointer; margin:0; display:flex; align-items:center;">
+                        <input type="radio" name="sim-mode" value="challenge" onchange="setMode_5_4('challenge')" style="margin-right:5px;"> Full Version
+                    </label>
+                </div>
+            </div>
+            <div id="u5-4-badge" style="display:none; font-weight:bold; color:#f39c12; font-family:sans-serif; text-align:right;">
+                <span style="font-size:1.5em; vertical-align:middle;">&#9733;</span> INERTIA MASTER
+            </div>
+        </div>
+
+        <div id="calc-5-4" style="background:white; border:1px solid #2c3e50; border-radius:4px; padding:10px; margin-bottom:15px; font-family:'Times New Roman', serif; font-size:1.0em; line-height:1.6;">
+        </div>
+
+        <div class="control-group" style="border-left: 4px solid #c0392b; padding-left: 10px;">
+            <label style="color:#c0392b; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>Mass per Block (<i class="var">m</i>):</span>
+                <span><span id="v-m">5.0</span> kg</span>
+            </label>
+            <input type="range" id="in-m" class="phys-slider" min="1.0" max="20.0" step="1.0" value="5.0" 
+                oninput="updateState_5_4('m', this.value)">
+        </div>
+
+        <div class="control-group" style="border-left: 4px solid #2980b9; padding-left: 10px; margin-top:10px;">
+            <label style="color:#2980b9; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>Radius from Center (<i class="var">r</i>):</span>
+                <span><span id="v-r">2.0</span> m</span>
+            </label>
+            <input type="range" id="in-r" class="phys-slider" min="0.5" max="3.0" step="0.5" value="2.0" 
+                oninput="updateState_5_4('r', this.value)">
+        </div>
+
+        <div class="control-group" style="border-left: 4px solid #8e44ad; padding-left: 10px; margin-top:10px;">
+            <label style="color:#8e44ad; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>Applied Torque (<i class="var">&tau;</i>):</span>
+                <span><span id="v-tau">20</span> N&middot;m</span>
+            </label>
+            <input type="range" id="in-tau" class="phys-slider" min="0" max="100" step="5" value="20" 
+                oninput="updateState_5_4('tauApp', this.value)">
+        </div>
+
+        <div style="margin-top:15px; display:flex; gap:10px;">
+            <button class="btn btn-green" onclick="start_5_4()" id="btn-start">Apply Torque</button>
+            <button class="btn btn-red" onclick="reset_5_4()">Reset</button>
+        </div>
+        
+        <div id="u5-4-questions" style="margin-top:20px; border-top:2px solid #eee; padding-top:15px; background:#fafafa; padding:15px; border-radius:5px;">
+        </div>
+    `;
+
+    const preventJump = (e) => {
+        const rect = e.target.getBoundingClientRect();
+        const min = parseFloat(e.target.min);
+        const max = parseFloat(e.target.max);
+        const val = parseFloat(e.target.value);
+        let clientX = e.clientX;
+        if (e.type === 'touchstart') clientX = e.touches[0].clientX;
+        const ratio = (val - min) / (max - min);
+        const clickX = clientX - rect.left;
+        const thumbX = ratio * rect.width;
+        if (Math.abs(clickX - thumbX) > 35) e.preventDefault();
+    };
+
+    document.querySelectorAll('.phys-slider').forEach(s => {
+        s.addEventListener('mousedown', preventJump);
+        s.addEventListener('touchstart', preventJump, {passive: false});
+    });
+
+    reset_5_4();
+}
+
+function updateState_5_4(key, val) {
+    if (state.running) return;
+    
+    state[key] = parseFloat(val);
+    
+    if (key === 'm') document.getElementById('v-m').innerText = state.m.toFixed(1);
+    if (key === 'r') document.getElementById('v-r').innerText = state.r.toFixed(1);
+    if (key === 'tauApp') document.getElementById('v-tau').innerText = state.tauApp.toFixed(0);
+    
+    calcPhysics_5_4();
+    updateCalcDisplay_5_4();
+    draw_5_4();
+}
+
+function setMode_5_4(mode) {
+    state.mode = mode;
+    const qDiv = document.getElementById('u5-4-questions');
+    const badge = document.getElementById('u5-4-badge');
+
+    if (state.level >= 3) {
+        badge.style.display = 'block';
+    } else {
+        badge.style.display = 'none';
+    }
+
+    if (mode === 'challenge') {
+        qDiv.style.display = 'none';
+        
+        ['in-m', 'in-r', 'in-tau'].forEach(id => {
+            document.getElementById(id).disabled = false;
+            document.getElementById(id).parentElement.style.opacity = "1.0";
+        });
+        
+    } else {
+        qDiv.style.display = 'block';
+        renderQuestions_5_4();
+    }
+    
+    updateLocks_5_4();
+    draw_5_4();
+    updateCalcDisplay_5_4();
+}
+
+function updateLocks_5_4() {
+    let sliders = document.querySelectorAll('.phys-slider');
+    let runBtn = document.getElementById('btn-start');
+    let lock = state.running;
+    
+    sliders.forEach(s => {
+        if (state.mode === 'guided') {
+            if (state.level === 0 && (s.id === 'in-tau' || s.id === 'in-r')) {
+                s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+            }
+            if (state.level === 1 && s.id === 'in-m') {
+                s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+            }
+            if (state.level === 2 && (s.id === 'in-m' || s.id === 'in-tau')) {
+                s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+            }
+        }
+        
+        s.disabled = lock;
+        s.style.opacity = lock ? "0.5" : "1.0";
+    });
+    
+    runBtn.disabled = lock;
+    runBtn.style.opacity = lock ? "0.5" : "1.0";
+}
+
+function calcPhysics_5_4() {
+    // 2 masses rotating around a center point (massless rod assumption)
+    state.I = 2 * state.m * (state.r * state.r) + 0.1; // 0.1 to prevent division by zero
+    state.alpha = state.tauApp / state.I;
+}
+
+function updateCalcDisplay_5_4() {
+    let box = document.getElementById('calc-5-4');
+    if (!box) return;
+    
+    const v = (t) => `<i class="var" style="font-family:'Times New Roman',serif">${t}</i>`;
+    
+    box.innerHTML = `
+        <div style="margin-bottom:10px;">
+            <div style="margin-bottom:5px; color:#555;">Rotational Inertia (Two Masses):</div>
+            <div style="font-size:1.1em;">
+                ${v('I')} = 2${v('mr')}&sup2; = <b>${state.I.toFixed(1)} kg&middot;m&sup2;</b>
+                <span style="font-size:0.8em; color:#777;">&nbsp;&nbsp;[2 &times; (${state.m.toFixed(1)} kg) &times; (${state.r.toFixed(1)} m)&sup2;]</span>
+            </div>
+        </div>
+        <div>
+            <div style="margin-bottom:5px; color:#555;">Angular Acceleration:</div>
+            <div style="font-size:1.1em;">
+                ${v('&alpha;')} = ${v('&tau;')} / ${v('I')} = <b>${state.alpha.toFixed(2)} rad/s&sup2;</b>
+                <span style="font-size:0.8em; color:#777;">&nbsp;&nbsp;[(${state.tauApp.toFixed(0)} N&middot;m) / (${state.I.toFixed(1)} kg&middot;m&sup2;)]</span>
+            </div>
+        </div>
+    `;
+}
+
+function start_5_4() {
+    if (!state.running) {
+        state.running = true;
+        state.t = 0;
+        state.omega = 0;
+        state.theta = 0;
+        state.history = [];
+        
+        calcPhysics_5_4();
+        updateLocks_5_4();
+        loop_5_4();
+    }
+}
+
+function reset_5_4() {
+    let savedLevel = loadProgress('5.4'); 
+
+    state = {
+        m: parseFloat(document.getElementById('in-m').value),
+        r: parseFloat(document.getElementById('in-r').value),
+        tauApp: parseFloat(document.getElementById('in-tau').value),
+        
+        theta: 0.0, 
+        omega: 0.0, 
+        alpha: 0.0,
+        t: 0,
+        I: 0,
+        
+        running: false,
+        history: [], 
+        
+        mode: document.querySelector('input[name="sim-mode"]:checked').value,
+        level: savedLevel
+    };
+    
+    if (state.mode === 'guided') {
+        if (state.level === 0) {
+            state.m = 5.0; state.r = 2.0; state.tauApp = 20;
+        } else if (state.level === 1) {
+            state.m = 5.0; state.r = 2.0; state.tauApp = 20;
+        } else if (state.level === 2) {
+            state.m = 10.0; state.tauApp = 50; state.r = 2.0;
+        }
+        
+        // Push values to sliders
+        document.getElementById('in-m').value = state.m;
+        document.getElementById('in-r').value = state.r;
+        document.getElementById('in-tau').value = state.tauApp;
+        document.getElementById('v-m').innerText = state.m.toFixed(1);
+        document.getElementById('v-r').innerText = state.r.toFixed(1);
+        document.getElementById('v-tau').innerText = state.tauApp.toFixed(0);
+    }
+    
+    calcPhysics_5_4();
+
+    if (state.level >= 3) {
+        document.getElementById('u5-4-badge').style.display = 'block';
+    }
+
+    setMode_5_4(state.mode);
+    updateCalcDisplay_5_4();
+    
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            draw_5_4();
+        });
+    });
+}
+
+function loop_5_4() {
+    if (currentSim !== '5.4') return;
+
+    if (state.running) {
+        let dt = 0.02;
+        state.t += dt;
+        
+        state.omega += state.alpha * dt;
+        state.theta += state.omega * dt;
+        
+        if (state.t * 60 % 3 < 1) { 
+            state.history.push({
+                t: state.t, 
+                w: state.omega
+            });
+        }
+        
+        // Stop after 2 seconds for clean measurement
+        if (state.t >= 2.0) {
+            state.running = false;
+            
+            // AUTOMATIC EVALUATION OF THE LEVEL
+            if (state.mode === 'guided') {
+                checkLevel_5_4();
+            }
+            updateLocks_5_4();
+        }
+    }
+
+    draw_5_4();
+    
+    if (state.running) {
+        requestAnimationFrame(loop_5_4);
+    }
+}
+
+function draw_5_4() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    let cx = 350;
+    let cy = 250;
+    let pxPerM = 50; 
+    
+    // Background Grid
+    ctx.strokeStyle = "rgba(0,0,0,0.05)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 700; i += pxPerM) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 500); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(700, i); ctx.stroke();
+    }
+    
+    // Draw Rotation Center
+    ctx.fillStyle = "#34495e";
+    ctx.beginPath();
+    ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(state.theta);
+    
+    // Draw Rod
+    let rodLen = 3.0 * pxPerM * 2; // Max radius visual
+    ctx.strokeStyle = "#95a5a6";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(-rodLen / 2, 0);
+    ctx.lineTo(rodLen / 2, 0);
+    ctx.stroke();
+    
+    // Draw Ruler Ticks on Rod
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    for (let i = 0.5; i <= 3.0; i += 0.5) {
+        ctx.fillRect(i * pxPerM, -10, 2, 20);
+        ctx.fillRect(-i * pxPerM, -10, 2, 20);
+    }
+    
+    // Draw Masses
+    let boxSize = 20 + state.m; // Visual scaling
+    let rPx = state.r * pxPerM;
+    
+    ctx.fillStyle = "#c0392b";
+    ctx.fillRect(rPx - boxSize / 2, -boxSize / 2, boxSize, boxSize);
+    ctx.fillRect(-rPx - boxSize / 2, -boxSize / 2, boxSize, boxSize);
+    
+    ctx.strokeStyle = "#e74c3c";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(rPx - boxSize / 2, -boxSize / 2, boxSize, boxSize);
+    ctx.strokeRect(-rPx - boxSize / 2, -boxSize / 2, boxSize, boxSize);
+    
+    ctx.restore();
+    
+    // Draw Torque Direction Indicator
+    if (state.tauApp > 0) {
+        ctx.strokeStyle = "rgba(142, 68, 173, 0.5)";
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 80, -Math.PI / 4, Math.PI / 2);
+        ctx.stroke();
+        
+        // Arrowhead
+        ctx.fillStyle = "rgba(142, 68, 173, 0.5)";
+        let arrowX = cx + 80 * Math.cos(Math.PI / 2);
+        let arrowY = cy + 80 * Math.sin(Math.PI / 2);
+        ctx.beginPath();
+        ctx.moveTo(arrowX, arrowY);
+        ctx.lineTo(arrowX - 15, arrowY - 10);
+        ctx.lineTo(arrowX + 5, arrowY - 15);
+        ctx.fill();
+    }
+    
+    // HUD
+    ctx.fillStyle = "#2c3e50";
+    ctx.font = "bold 16px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(`Time: ${state.t.toFixed(1)} s`, 20, 30);
+    ctx.fillText(`Omega (ω): ${state.omega.toFixed(1)} rad/s`, 20, 55);
+    
+    // Bottom Graph Panel
+    let panelY = 480;
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, panelY, 700, 160);
+    
+    ctx.strokeStyle = "#ccc";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, panelY);
+    ctx.lineTo(700, panelY);
+    ctx.stroke();
+    
+    drawMiniGraph_5_4(50, panelY + 20, 600, 120, state.history, 'w', [0, 10], "Angular Velocity (rad/s)");
+}
+
+function drawMiniGraph_5_4(x, y, w, h, data, key, range, label) {
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 1;
+    
+    // Axes
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y + h);
+    ctx.lineTo(x + w, y + h);
+    ctx.stroke();
+    
+    // Labels
+    ctx.fillStyle = "#333";
+    ctx.textAlign = "center";
+    ctx.font = "12px sans-serif";
+    ctx.save();
+    ctx.translate(x - 35, y + h / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(label, 0, 0);
+    ctx.restore();
+    
+    ctx.fillText("Time (s)", x + w / 2, y + h + 30);
+    
+    // Axis values
+    ctx.textAlign = "right";
+    ctx.fillText(range[1], x - 5, y + 10);
+    ctx.fillText("0", x - 5, y + h);
+    ctx.fillText("2.0s", x + w, y + h + 15);
+    
+    if (data.length > 0) {
+        let pxPerVal = h / range[1];
+        let tMax = 2.0; 
+        
+        ctx.beginPath();
+        ctx.strokeStyle = "#2980b9";
+        ctx.lineWidth = 3;
+        
+        for (let i = 0; i < data.length; i++) {
+            let p = data[i];
+            let val = p[key];
+            if (val > range[1]) val = range[1];
+            
+            let px = x + (p.t / tMax) * w;
+            let py = (y + h) - (val * pxPerVal);
+            
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+    }
+}
+
+function renderQuestions_5_4() {
+    let div = document.getElementById('u5-4-questions');
+    const v = (text) => `<i class="var">${text}</i>`;
+
+    if (state.level === 0) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#2980b9;">Level 1: Calculating Inertia</h4>
+            <p>Set Mass ${v('m')} = <b>5.0 kg</b> and Radius ${v('r')} = <b>2.0 m</b>.</p>
+            <p>Calculate the total Rotational Inertia ${v('I')} for this two-mass system.</p>
+            <div style="margin-top:10px;">
+                <input type="number" id="ans-1" placeholder="kg·m²" style="width:100px; padding:4px;" 
+                       onkeypress="if(event.key==='Enter') checkAnswer_5_4(0)"> 
+                <button onclick="checkAnswer_5_4(0)" style="cursor:pointer; padding:4px 8px;">Check</button>
+            </div>
+            <div id="fb-0"></div>
+        `;
+    } else if (state.level === 1) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#c0392b;">Level 2: Applying Torque</h4>
+            <p>The inertia is <b>40.0 kg&middot;m&sup2;</b>.</p>
+            <p>If you apply a torque of ${v('&tau;')} = <b>20 N&middot;m</b>, what will the Angular Acceleration ${v('&alpha;')} be?</p>
+            <div style="margin-top:10px;">
+                <input type="number" id="ans-2" placeholder="rad/s²" style="width:80px; padding:4px;" 
+                       onkeypress="if(event.key==='Enter') checkAnswer_5_4(1)"> 
+                <button onclick="checkAnswer_5_4(1)" style="cursor:pointer; padding:4px 8px;">Check</button>
+            </div>
+            <div id="fb-1"></div>
+        `;
+    } else if (state.level === 2) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 3: The Target Speed</h4>
+            <p>Mass is locked at <b>10.0 kg</b>. Torque is locked at <b>50 N&middot;m</b>.</p>
+            <p>You need to hit a target Angular Velocity of exactly <b>5.0 rad/s</b> at the 2.0-second mark.</p>
+            <p>Adjust the <b>Radius</b> slider to alter the inertia, then hit "Apply Torque" to test it!</p>
+            <div id="fb-2" style="margin-top:10px; font-weight:bold;">Waiting for run...</div>
+        `;
+    } else {
+        div.innerHTML = `
+            <h3 style="color:#f39c12; margin:0;">&#9733; INERTIA MASTER &#9733;</h3>
+            <p>You understand how mass distribution affects rotation!</p>
+        `;
+    }
+}
+
+function checkAnswer_5_4(lvl) {
+    let correct = false;
+    let fb = document.getElementById('fb-' + lvl);
+    
+    if (lvl === 0) {
+        let val = parseFloat(document.getElementById('ans-1').value);
+        // I = 2 * 5 * 2^2 = 40.
+        if (state.m === 5.0 && state.r === 2.0 && Math.abs(val - 40.0) < 1.0) correct = true;
+        else if (state.m !== 5.0 || state.r !== 2.0) {
+             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Set sliders to m=5, r=2 first!</span>`;
+             return;
+        }
+    } else if (lvl === 1) {
+        let val = parseFloat(document.getElementById('ans-2').value);
+        // alpha = 20 / 40 = 0.5.
+        if (state.tauApp === 20 && Math.abs(val - 0.5) < 0.1) correct = true;
+        else if (state.tauApp !== 20) {
+             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Ensure Applied Torque is 20!</span>`;
+             return;
+        }
+    }
+
+    if (correct) {
+        fb.innerHTML = "<span style='color:green; font-weight:bold;'>Correct! Unlocking next step...</span>";
+        setTimeout(() => {
+            state.level++;
+            saveProgress('5.4', state.level);
+            if (state.level >= 3) {
+                document.getElementById('u5-4-badge').style.display = 'block';
+            }
+            renderQuestions_5_4();
+            reset_5_4();
+        }, 1500);
+    } else {
+        fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Incorrect. Check your math!</span>`;
+    }
+}
+
+// THIS FUNCTION AUTOMATICALLY EVALUATES LEVEL 3 WHEN THE TIMER HITS 2.0s
+function checkLevel_5_4() {
+    if (state.mode === 'guided' && state.level === 2) {
+        let fb = document.getElementById('fb-2');
+        
+        // Target omega is 5.0 rad/s
+        if (Math.abs(state.omega - 5.0) < 0.2) {
+            fb.innerHTML = "<span style='color:green;'>Perfect! You hit the target speed! Unlocking mastery...</span>";
+            setTimeout(() => {
+                state.level++;
+                saveProgress('5.4', state.level);
+                document.getElementById('u5-4-badge').style.display = 'block';
+                renderQuestions_5_4();
+                reset_5_4();
+            }, 2000);
+        } else {
+            fb.innerHTML = `<span style='color:#c0392b;'>Missed! Your speed was ${state.omega.toFixed(1)} rad/s. Aim for 5.0. Change the Radius and try again.</span>`;
+        }
+    }
+}
+
+
