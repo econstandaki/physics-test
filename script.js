@@ -9185,21 +9185,21 @@ function checkLevel_3_4() {
 }
 
 // ===============================================
-// === UNIT 3.5: ELASTIC POTENTIAL ENERGY (Gold Standard v4.6) ===
+// === UNIT 3.5: POWER (Gold Standard v4.8) ===
 // ===============================================
 
 function setup_3_5() {
     canvas.width = 700; 
     canvas.height = 640; 
 
-    document.getElementById('sim-title').innerText = "3.5 Elastic Potential Energy";
+    document.getElementById('sim-title').innerText = "3.5 Power";
     
     document.getElementById('sim-desc').innerHTML = `
-        <h3 style="margin-top:0; margin-bottom:10px;">Springs & Conservation</h3>
+        <h3 style="margin-top:0; margin-bottom:10px;">The Rate of Work</h3>
         <p style="margin-bottom:10px; line-height:1.4;">
-        Energy can be stored in a compressed spring. When released, this potential energy converts to motion.
-        <br><b>Equations:</b> <i class="var">F</i> = <i class="var">-kx</i> &nbsp;|&nbsp; <i class="var">U<sub>s</sub></i> = &frac12;<i class="var">kx</i>²
-        <br><i><b>Mission:</b> Compress the spring and launch the block!</i></p>`;
+        Power ($P$) measures how quickly work is done or energy is transferred. A more powerful motor does the same work in less time.
+        <br><b>Equations:</b> <i class="var">P</i> = <i class="var">W / t</i> &nbsp;|&nbsp; <i class="var">P</i> = <i class="var">F v</i>
+        <br><i><b>Mission:</b> Manage the winch motor to lift the crates efficiently!</i></p>`;
 
     document.getElementById('sim-controls').innerHTML = `
         <div style="background:#eef2f3; padding:10px; border-radius:5px; margin-bottom:15px; border:1px solid #ccc; display:flex; justify-content:space-between; align-items:center;">
@@ -9215,42 +9215,42 @@ function setup_3_5() {
                 </div>
             </div>
             <div id="u3-5-badge" style="display:none; font-weight:bold; color:#f39c12; font-family:sans-serif; text-align:right;">
-                <span style="font-size:1.5em; vertical-align:middle;">&#9733;</span> SPRING MASTER
+                <span style="font-size:1.5em; vertical-align:middle;">&#9733;</span> POWER PLANT
             </div>
         </div>
 
         <div id="calc-3-5" style="background:white; border:1px solid #2c3e50; border-radius:4px; padding:10px; margin-bottom:15px; font-family:'Times New Roman', serif; font-size:1.0em; line-height:1.6;">
         </div>
 
-        <div class="control-group" style="border-left: 4px solid #2980b9; padding-left: 10px;">
-            <label style="color:#2980b9; font-weight:bold; display:flex; justify-content:space-between;">
-                <span>Spring Constant (<i class="var">k</i>):</span>
-                <span><span id="v-k">100</span> N/m</span>
-            </label>
-            <input type="range" id="in-k" class="phys-slider" min="50" max="500" step="10" value="100" 
-                oninput="updateState_3_5('k', this.value)">
-        </div>
-
-        <div class="control-group" style="border-left: 4px solid #8e44ad; padding-left: 10px; margin-top:10px;">
-            <label style="color:#8e44ad; font-weight:bold; display:flex; justify-content:space-between;">
-                <span>Compression (<i class="var">x</i>):</span>
-                <span><span id="v-x">0.0</span> m</span>
-            </label>
-            <input type="range" id="in-x" class="phys-slider" min="0.0" max="2.0" step="0.1" value="0.0" 
-                oninput="updateState_3_5('x', this.value)">
-        </div>
-
-        <div class="control-group" style="border-left: 4px solid #c0392b; padding-left: 10px; margin-top:10px;">
+        <div class="control-group" style="border-left: 4px solid #c0392b; padding-left: 10px;">
             <label style="color:#c0392b; font-weight:bold; display:flex; justify-content:space-between;">
-                <span>Block Mass (<i class="var">m</i>):</span>
-                <span><span id="v-m">2.0</span> kg</span>
+                <span>Crate Mass (<i class="var">m</i>):</span>
+                <span><span id="v-m">50.0</span> kg</span>
             </label>
-            <input type="range" id="in-m" class="phys-slider" min="0.5" max="10.0" step="0.5" value="2.0" 
+            <input type="range" id="in-m" class="phys-slider" min="10.0" max="100.0" step="5.0" value="50.0" 
                 oninput="updateState_3_5('m', this.value)">
         </div>
 
+        <div class="control-group" style="border-left: 4px solid #2980b9; padding-left: 10px; margin-top:10px;">
+            <label style="color:#2980b9; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>Lift Height (<i class="var">h</i>):</span>
+                <span><span id="v-h">10.0</span> m</span>
+            </label>
+            <input type="range" id="in-h" class="phys-slider" min="5.0" max="20.0" step="1.0" value="10.0" 
+                oninput="updateState_3_5('h', this.value)">
+        </div>
+
+        <div class="control-group" style="border-left: 4px solid #f39c12; padding-left: 10px; margin-top:10px;">
+            <label style="color:#f39c12; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>Motor Power (<i class="var">P</i>):</span>
+                <span><span id="v-p">1000</span> W</span>
+            </label>
+            <input type="range" id="in-p" class="phys-slider" min="200" max="5000" step="100" value="1000" 
+                oninput="updateState_3_5('pApp', this.value)">
+        </div>
+
         <div style="margin-top:15px; display:flex; gap:10px;">
-            <button class="btn btn-green" onclick="start_3_5()" id="btn-start">Fire Spring</button>
+            <button class="btn btn-green" onclick="start_3_5()" id="btn-start">Engage Winch</button>
             <button class="btn btn-red" onclick="reset_3_5()">Reset</button>
         </div>
         
@@ -9264,11 +9264,11 @@ function setup_3_5() {
         const max = parseFloat(e.target.max);
         const val = parseFloat(e.target.value);
         let clientX = e.clientX;
-        if(e.type === 'touchstart') clientX = e.touches[0].clientX;
+        if (e.type === 'touchstart') clientX = e.touches[0].clientX;
         const ratio = (val - min) / (max - min);
         const clickX = clientX - rect.left;
         const thumbX = ratio * rect.width;
-        if(Math.abs(clickX - thumbX) > 35) e.preventDefault();
+        if (Math.abs(clickX - thumbX) > 35) e.preventDefault();
     };
 
     document.querySelectorAll('.phys-slider').forEach(s => {
@@ -9280,12 +9280,13 @@ function setup_3_5() {
 }
 
 function updateState_3_5(key, val) {
-    if(state.running) return;
+    if (state.running) return;
     
     state[key] = parseFloat(val);
-    if(key === 'k') document.getElementById('v-k').innerText = state.k.toFixed(0);
-    if(key === 'x') document.getElementById('v-x').innerText = state.x.toFixed(1);
-    if(key === 'm') document.getElementById('v-m').innerText = state.m.toFixed(1);
+    
+    if (key === 'm') document.getElementById('v-m').innerText = state.m.toFixed(1);
+    if (key === 'h') document.getElementById('v-h').innerText = state.h.toFixed(1);
+    if (key === 'pApp') document.getElementById('v-p').innerText = state.pApp.toFixed(0);
     
     calcPhysics_3_5();
     updateCalcDisplay_3_5();
@@ -9297,13 +9298,21 @@ function setMode_3_5(mode) {
     const qDiv = document.getElementById('u3-5-questions');
     const badge = document.getElementById('u3-5-badge');
 
-    if(state.level >= 3) badge.style.display = 'block';
-    else badge.style.display = 'none';
+    if (state.level >= 3) {
+        badge.style.display = 'block';
+    } else {
+        badge.style.display = 'none';
+    }
 
-    if(mode === 'challenge') {
+    if (mode === 'challenge') {
         qDiv.style.display = 'none';
-        document.getElementById('in-k').disabled = false;
-        document.getElementById('in-k').parentElement.style.opacity = "1.0";
+        
+        ['in-m', 'in-h', 'in-p'].forEach(id => {
+            document.getElementById(id).disabled = false;
+            document.getElementById(id).parentElement.style.opacity = "1.0";
+        });
+        state.isMystery = false;
+        
     } else {
         qDiv.style.display = 'block';
         renderQuestions_3_5();
@@ -9320,69 +9329,77 @@ function updateLocks_3_5() {
     let lock = state.running;
     
     sliders.forEach(s => {
-        // Specific locks for levels handled in renderQuestions
+        if (state.mode === 'guided') {
+            if (state.level === 0 && (s.id === 'in-m' || s.id === 'in-h')) {
+                s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+            }
+            if (state.level === 1 && (s.id === 'in-m' || s.id === 'in-h')) {
+                s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+            }
+            if (state.level === 2 && (s.id === 'in-m' || s.id === 'in-h')) {
+                s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+            }
+        }
+        
         s.disabled = lock;
         s.style.opacity = lock ? "0.5" : "1.0";
     });
+    
     runBtn.disabled = lock;
     runBtn.style.opacity = lock ? "0.5" : "1.0";
 }
 
 function calcPhysics_3_5() {
-    // Force required to hold spring at x: F = kx
-    state.f_hold = state.k * state.x;
+    let g = 10.0; // Using g=10 for easier power math
     
-    // Potential Energy: Us = 0.5 * k * x^2
-    state.u_s = 0.5 * state.k * state.x * state.x;
+    // Total Work to lift the crate
+    state.work = state.m * g * state.h;
     
-    // Max Velocity (Conservation): 0.5*m*v^2 = U_s  -> v = sqrt(2*U_s/m)
-    state.v_max = Math.sqrt((2 * state.u_s) / state.m);
+    // Velocity required by the motor: P = Fv -> v = P/F
+    state.forceLift = state.m * g;
+    state.v = state.pApp / state.forceLift;
+    
+    // Total time to reach height
+    state.tTarget = state.h / state.v;
 }
 
 function updateCalcDisplay_3_5() {
     let box = document.getElementById('calc-3-5');
-    if(!box) return;
+    if (!box) return;
     
     const v = (t) => `<i class="var" style="font-family:'Times New Roman',serif">${t}</i>`;
     
-    // Values
-    let uVal = state.u_s.toFixed(1);
-    let kVal = state.k.toFixed(0);
-    let xVal = state.x.toFixed(1);
+    let mStr = state.isMystery ? "?" : state.m.toFixed(1);
+    let forceStr = state.isMystery ? "?" : state.forceLift.toFixed(0);
+    let workStr = state.isMystery ? "?" : state.work.toFixed(0);
     
-    // Dynamic Display based on state
-    let content = "";
-    
-    if(state.running && state.blockX > state.eqX) {
-        // Block Launched
-        content = `
-            <div style="margin-bottom:5px;">
-                ${v('K<sub>final</sub>')} = ${v('U<sub>elastic</sub>')}
-            </div>
+    box.innerHTML = `
+        <div style="margin-bottom:10px; font-size: 0.9em; color: #555;">
+            * Assuming ${v('g')} = 10 m/s&sup2; for simple math calculations.
+        </div>
+        <div style="margin-bottom:10px;">
+            <div style="margin-bottom:5px; color:#555;">Total Work Required:</div>
             <div style="font-size:1.1em;">
-                &frac12;${v('mv²')} = <b>${uVal} J</b>
+                ${v('W')} = ${v('mgh')} = <b>${workStr} J</b>
+                <span style="font-size:0.8em; color:#777;">&nbsp;&nbsp;[(${mStr} kg) &times; (10 m/s&sup2;) &times; (${state.h.toFixed(1)} m)]</span>
             </div>
-        `;
-    } else {
-        // Compressed State
-        content = `
-            <div style="margin-bottom:5px;">
-                ${v('U<sub>s</sub>')} = &frac12;${v('kx²')}
-            </div>
+        </div>
+        <div>
+            <div style="margin-bottom:5px; color:#555;">Lifting Velocity (<i class="var">P = Fv</i>):</div>
             <div style="font-size:1.1em;">
-                <b>${uVal} J</b> = &frac12;(${kVal})(${xVal})²
+                ${v('v')} = ${v('P')} / ${v('F<sub>g</sub>')} = <b>${state.v.toFixed(2)} m/s</b>
+                <span style="font-size:0.8em; color:#777;">&nbsp;&nbsp;[(${state.pApp.toFixed(0)} W) / (${forceStr} N)]</span>
             </div>
-        `;
-    }
-    
-    box.innerHTML = content;
+        </div>
+    `;
 }
 
 function start_3_5() {
-    if(!state.running && state.x > 0) {
+    if (!state.running) {
         state.running = true;
         state.t = 0;
-        state.history = []; 
+        state.currentY = 0; // Starts at 0m (ground)
+        state.history = [];
         
         calcPhysics_3_5();
         updateLocks_3_5();
@@ -9394,50 +9411,55 @@ function reset_3_5() {
     let savedLevel = loadProgress('3.5'); 
 
     state = {
-        k: parseFloat(document.getElementById('in-k').value),
-        x: parseFloat(document.getElementById('in-x').value),
         m: parseFloat(document.getElementById('in-m').value),
+        h: parseFloat(document.getElementById('in-h').value),
+        pApp: parseFloat(document.getElementById('in-p').value),
         
         t: 0,
-        history: [],
+        currentY: 0,
+        v: 0,
+        forceLift: 0,
+        work: 0,
+        tTarget: 0,
+        
         running: false,
-        
-        // Physics Layout
-        wallX: 50,
-        eqX: 250, // Equilibrium position of block's back edge (Spring Natural Length = 200px)
-        
-        // Dynamic
-        blockX: 0, // Calculated in loop
-        blockV: 0,
+        isMystery: false,
+        history: [], 
         
         mode: document.querySelector('input[name="sim-mode"]:checked').value,
         level: savedLevel
     };
     
-    // Initial Block Position (Compressed)
-    // 1m = 100px for scale?
-    // Let's say max compression 2.0m = 200px.
-    state.pxPerM = 100;
-    state.blockX = state.eqX - (state.x * state.pxPerM);
-    
-    // Level Logic
-    if(state.mode === 'guided') {
-        let kSlider = document.getElementById('in-k');
-        if(state.level === 0) {
-            // Level 1: Lock K
-            state.k = 100;
-            kSlider.disabled = true;
-            kSlider.parentElement.style.opacity = "0.5";
-            document.getElementById('v-k').innerText = "100";
-        } else {
-            kSlider.disabled = false;
-            kSlider.parentElement.style.opacity = "1.0";
+    if (state.mode === 'guided') {
+        if (state.level === 0) {
+            state.m = 50.0; state.h = 10.0; state.pApp = 1000;
+        } else if (state.level === 1) {
+            state.m = 100.0; state.h = 20.0; state.pApp = 2000;
+        } else if (state.level === 2) {
+            state.isMystery = true;
+            state.m = 80.0; // Secret mass
+            state.h = 15.0; 
+            state.pApp = 1200;
+            
+            document.getElementById('v-m').innerText = "???";
         }
+        
+        if (!state.isMystery) {
+            document.getElementById('v-m').innerText = state.m.toFixed(1);
+            document.getElementById('in-m').value = state.m;
+        }
+        
+        document.getElementById('in-h').value = state.h;
+        document.getElementById('in-p').value = state.pApp;
+        document.getElementById('v-h').innerText = state.h.toFixed(1);
+        document.getElementById('v-p').innerText = state.pApp.toFixed(0);
     }
     
     calcPhysics_3_5();
 
-    if(state.level >= 3) document.getElementById('u3-5-badge').style.display = 'block';
+    if (state.level >= 3) {
+        document.getElementById('u3-5-badge').style.display = 'block';
+    }
 
     setMode_3_5(state.mode);
     updateCalcDisplay_3_5();
@@ -9450,196 +9472,159 @@ function reset_3_5() {
 }
 
 function loop_3_5() {
-    if(currentSim !== '3.5') return;
+    if (currentSim !== '3.5') return;
 
-    if(state.running) {
-        // Physics Engine
-        // Phase 1: Acceleration (Block still attached to spring, x < 0 relative to eq)
-        // Phase 2: Coasting (Block detached, x >= 0)
-        
-        // We use a small time step integration
-        let dt = 0.015; // slightly slower for visibility
+    if (state.running) {
+        let dt = 0.02;
         state.t += dt;
         
-        // Current compression (meters)
-        // eqX is where spring is relaxed. blockX is current position.
-        // compression dx = (eqX - blockX) / pxPerM
-        let dx = (state.eqX - state.blockX) / state.pxPerM;
+        state.currentY += state.v * dt;
         
-        if(dx > 0) {
-            // Phase 1: Spring Pushing
-            let f = state.k * dx;
-            let a = f / state.m;
-            state.blockV += a * dt;
-            state.blockX += state.blockV * dt * state.pxPerM;
-        } else {
-            // Phase 2: Detached (Constant V)
-            // Snap to equilibrium for spring visualization, allow block to fly
-            // blockV is now constant (max velocity)
-            state.blockX += state.blockV * dt * state.pxPerM;
-        }
-        
-        // Record History
-        if(state.t * 60 % 3 < 1) { 
+        if (state.t * 60 % 3 < 1) { 
             state.history.push({
                 t: state.t, 
-                v: state.blockV
+                y: state.currentY
             });
         }
         
-        // Stop Condition (Wall or time)
-        if(state.blockX > 650 || state.t > 5.0) {
+        // Stop when height is reached
+        if (state.currentY >= state.h) {
+            state.currentY = state.h;
             state.running = false;
-            if(state.mode === 'guided') checkLevel_3_5();
+            
+            if (state.mode === 'guided') {
+                checkLevel_3_5();
+            }
             updateLocks_3_5();
         }
     }
 
     draw_3_5();
     
-    if(state.running) requestAnimationFrame(loop_3_5);
+    if (state.running) {
+        requestAnimationFrame(loop_3_5);
+    }
 }
 
 function draw_3_5() {
-    ctx.clearRect(0,0,canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    let floorY = 350;
+    let groundY = 400;
+    let pxPerM = 15; // 20m max height fits in 300px
+    let rigX = 200;
     
-    // === ZONE 1: WORLD ===
-    // Floor
-    ctx.fillStyle = "#ecf0f1"; ctx.fillRect(0,0,700, floorY); 
-    ctx.fillStyle = "#bdc3c7"; ctx.fillRect(0, floorY, 700, 100);
-    // Wall
-    ctx.fillStyle = "#95a5a6"; ctx.fillRect(0, 0, state.wallX, 640);
-    ctx.strokeStyle = "#7f8c8d"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(state.wallX, 0); ctx.lineTo(state.wallX, 640); ctx.stroke();
-    
-    // Ticks (Meters)
-    ctx.fillStyle = "#7f8c8d"; ctx.font = "10px sans-serif";
-    for(let i=0; i<=6; i++) {
-        let x = state.eqX + (i-2)*state.pxPerM; // EQ is at 0m relative to spring? No, EQ is origin.
-        // Let's make EQ = 0m on the ruler.
-        let rulerX = state.eqX + i*state.pxPerM;
-        if(rulerX > state.wallX) {
-            ctx.fillRect(rulerX, floorY, 1, 10);
-            ctx.fillText(i+"m", rulerX-5, floorY+25);
-        }
+    // Background Grid
+    ctx.strokeStyle = "rgba(0,0,0,0.05)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 700; i += pxPerM) {
+        ctx.beginPath(); 
+        ctx.moveTo(i, 0); 
+        ctx.lineTo(i, groundY); 
+        ctx.stroke();
     }
     
-    // Spring
-    // Starts at wallX, Ends at... blockX (if pushing) or eqX (if detached)
-    let springEndX = state.blockX;
-    if(state.running && state.blockX > state.eqX) springEndX = state.eqX; // Spring stops expanding
+    // Draw Ground
+    ctx.fillStyle = "#95a5a6";
+    ctx.fillRect(0, groundY, 700, 40);
     
-    drawSpring_3_5(state.wallX, floorY - 30, springEndX, floorY - 30, 20);
+    // Draw Tower Structure
+    ctx.fillStyle = "#34495e";
+    ctx.fillRect(rigX - 10, 50, 20, groundY - 50); // Main mast
     
-    // Block
-    let boxSize = 40;
-    ctx.fillStyle = "#e67e22"; ctx.fillRect(state.blockX, floorY - boxSize, boxSize, boxSize);
-    ctx.strokeStyle = "#d35400"; ctx.lineWidth=2; ctx.strokeRect(state.blockX, floorY - boxSize, boxSize, boxSize);
-    // Mass Label
-    ctx.fillStyle = "white"; ctx.font = "bold 10px sans-serif"; ctx.textAlign="center";
-    ctx.fillText(state.m.toFixed(1)+"kg", state.blockX + boxSize/2, floorY - 15);
-    
-    // Force Vector (Restoring Force) - Only if compressed
-    if(springEndX < state.eqX - 1) { // 1px tolerance
-        // Force points Right
-        // F = kx. Max F approx 500*2 = 1000N. Scale 0.1?
-        let dx = (state.eqX - springEndX) / state.pxPerM;
-        let f = state.k * dx;
-        let fLen = f * 0.15; 
-        drawVector_3_5(state.blockX + boxSize/2, floorY - boxSize/2, fLen, 0, "#2980b9", "F_s");
-    }
-    
-    // Velocity Vector
-    if(state.blockV > 0.1) {
-        drawVector_3_5(state.blockX + boxSize/2, floorY - boxSize/2, state.blockV * 15, 0, "#27ae60", "v");
-    }
-    
-    // === ZONE 2: ENERGY BARS ===
-    let barX = 100;
-    let barY = 500;
-    let barH = 30;
-    let barMaxW = 500;
-    
-    // Calculate Energies
-    // If not running, U is static. If running, U converts to K.
-    // U = 0.5 k x^2 (where x is remaining compression)
-    let currentX = 0;
-    if(!state.running) currentX = (state.eqX - state.blockX)/state.pxPerM;
-    else if(state.blockX < state.eqX) currentX = (state.eqX - state.blockX)/state.pxPerM;
-    
-    let curU = 0.5 * state.k * currentX * currentX;
-    let curK = state.u_s - curU; // Conservation
-    if(curK < 0) curK = 0; // Floating point safety
-    
-    // Max Energy Reference (for scaling visual)
-    // 0.5 * 500 * 4 = 1000 J max possible
-    let maxJ = 1000;
-    
-    // Draw Bars
-    // U (Blue)
-    let uW = (curU / maxJ) * barMaxW;
-    ctx.fillStyle = "#2980b9"; ctx.fillRect(barX, barY, uW, barH);
-    
-    // K (Green) - Stacked? Or separate? Let's stack to show conservation (Total width constant)
-    let kW = (curK / maxJ) * barMaxW;
-    ctx.fillStyle = "#27ae60"; ctx.fillRect(barX + uW, barY, kW, barH);
-    
-    // Frame
-    ctx.strokeStyle = "#333"; ctx.lineWidth=2; 
-    let totalW = ((state.u_s)/maxJ) * barMaxW; // Current total E width
-    ctx.strokeRect(barX, barY, Math.max(totalW, 2), barH);
-    
-    // Labels
-    ctx.fillStyle = "#333"; ctx.font = "bold 14px sans-serif"; ctx.textAlign="right";
-    ctx.fillText("Energy:", barX - 10, barY + 20);
-    
-    // Legend
-    ctx.textAlign="left";
-    ctx.fillStyle = "#2980b9"; ctx.fillText(`U: ${curU.toFixed(0)}J`, barX, barY - 10);
-    if(curK > 1) {
-        ctx.fillStyle = "#27ae60"; ctx.fillText(`K: ${curK.toFixed(0)}J`, barX + uW + 10, barY - 10);
-    }
-}
-
-function drawSpring_3_5(x1, y1, x2, y2, coils) {
-    ctx.strokeStyle = "#333"; ctx.lineWidth = 2;
+    // Draw Motor / Winch at top
+    ctx.fillStyle = "#f39c12";
+    ctx.fillRect(rigX - 30, 30, 60, 40);
+    ctx.fillStyle = "#d35400";
     ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    
-    let dist = x2 - x1;
-    let step = dist / coils;
-    
-    for(let i=0; i<coils; i++) {
-        let x = x1 + i*step;
-        // Zigzag
-        ctx.lineTo(x + step/4, y1 - 10);
-        ctx.lineTo(x + 3*step/4, y1 + 10);
-        ctx.lineTo(x + step, y1);
-    }
-    ctx.stroke();
-}
-
-function drawVector_3_5(x, y, dx, dy, color, label) {
-    let endX = x + dx;
-    let endY = y + dy; 
-    
-    ctx.strokeStyle = color; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(endX, endY); ctx.stroke();
-    
-    let angle = Math.atan2(dy, dx);
-    let headLen = 8;
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(endX, endY);
-    ctx.lineTo(endX - headLen * Math.cos(angle - Math.PI/6), endY - headLen * Math.sin(angle - Math.PI/6));
-    ctx.lineTo(endX - headLen * Math.cos(angle + Math.PI/6), endY - headLen * Math.sin(angle + Math.PI/6));
+    ctx.arc(rigX, 50, 15, 0, Math.PI * 2);
     ctx.fill();
     
-    if(label) {
-        ctx.fillStyle = color;
-        ctx.font = "bold 14px serif";
-        ctx.fillText(label, endX + 5, endY - 5);
+    // Target Line
+    let targetY = groundY - (state.h * pxPerM);
+    ctx.strokeStyle = "#27ae60";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(rigX + 20, targetY);
+    ctx.lineTo(rigX + 150, targetY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#27ae60";
+    ctx.font = "bold 12px sans-serif";
+    ctx.fillText("TARGET: " + state.h.toFixed(1) + "m", rigX + 160, targetY + 4);
+    
+    // Height Marker (Live)
+    let currentPxY = groundY - (state.currentY * pxPerM);
+    
+    // Draw Cable
+    ctx.strokeStyle = "#7f8c8d";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(rigX, 50);
+    ctx.lineTo(rigX, currentPxY);
+    ctx.stroke();
+    
+    // Draw Crate
+    let crateSize = 30 + (state.isMystery ? 10 : state.m * 0.2); // Visual scaling
+    ctx.fillStyle = "#c0392b";
+    ctx.fillRect(rigX - crateSize / 2, currentPxY, crateSize, crateSize);
+    ctx.strokeStyle = "#922b21";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(rigX - crateSize / 2, currentPxY, crateSize, crateSize);
+    
+    // Mass Label
+    ctx.fillStyle = "white";
+    ctx.font = "bold 12px sans-serif";
+    ctx.textAlign = "center";
+    if (state.isMystery) {
+        ctx.fillText("? kg", rigX, currentPxY + crateSize / 2 + 4);
+    } else {
+        ctx.fillText(state.m.toFixed(0) + " kg", rigX, currentPxY + crateSize / 2 + 4);
+    }
+    
+    // HUD - Timer & Velocity
+    ctx.fillStyle = "#2c3e50";
+    ctx.textAlign = "left";
+    ctx.font = "bold 20px 'Courier New', monospace";
+    ctx.fillText(`Time: ${state.t.toFixed(2)} s`, 450, 80);
+    ctx.font = "16px sans-serif";
+    ctx.fillText(`Velocity: ${state.v.toFixed(2)} m/s`, 450, 110);
+    
+    // Bottom Dashboard (Work vs Power)
+    let panelY = 460;
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, panelY, 700, 180);
+    ctx.strokeStyle = "#ccc";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, panelY);
+    ctx.lineTo(700, panelY);
+    ctx.stroke();
+    
+    // Work Progress Bar
+    let barX = 50;
+    let barY = 500;
+    let barW = 600;
+    let barH = 30;
+    
+    let currentWork = state.m * 10.0 * state.currentY;
+    let totalWork = state.m * 10.0 * state.h;
+    let fillRatio = Math.min(currentWork / totalWork, 1.0);
+    
+    ctx.fillStyle = "#ecf0f1";
+    ctx.fillRect(barX, barY, barW, barH);
+    ctx.fillStyle = "#3498db";
+    ctx.fillRect(barX, barY, barW * fillRatio, barH);
+    ctx.strokeRect(barX, barY, barW, barH);
+    
+    ctx.fillStyle = "#2c3e50";
+    ctx.font = "bold 14px sans-serif";
+    ctx.textAlign = "center";
+    
+    if (state.isMystery) {
+        ctx.fillText(`Work Done (Mystery Mass)`, barX + barW / 2, barY + 20);
+    } else {
+        ctx.fillText(`Work Done: ${currentWork.toFixed(0)} J / ${totalWork.toFixed(0)} J`, barX + barW / 2, barY + 20);
     }
 }
 
@@ -9647,40 +9632,40 @@ function renderQuestions_3_5() {
     let div = document.getElementById('u3-5-questions');
     const v = (text) => `<i class="var">${text}</i>`;
 
-    if(state.level === 0) {
+    if (state.level === 0) {
         div.innerHTML = `
-            <h4 style="margin:0 0 10px 0; color:#2980b9;">Level 1: Hooke's Law</h4>
-            <p>Set Spring Constant ${v('k')} = <b>100 N/m</b>.</p>
-            <p>Compress the spring by ${v('x')} = <b>1.5 m</b>.</p>
-            <p>Calculate the Force required to hold it: ${v('F')} = ${v('kx')}.</p>
+            <h4 style="margin:0 0 10px 0; color:#2980b9;">Level 1: Calculating Time</h4>
+            <p>Set Mass ${v('m')} = <b>50.0 kg</b> and Height ${v('h')} = <b>10.0 m</b>.</p>
+            <p>You engage the motor at ${v('P')} = <b>1000 W</b>.</p>
+            <p>Calculate the total Time (${v('t')}) it will take to lift the crate.</p>
             <div style="margin-top:10px;">
-                <input type="number" id="ans-1" placeholder="Newtons" style="width:80px; padding:4px;" 
+                <input type="number" id="ans-1" placeholder="seconds" style="width:100px; padding:4px;" 
                        onkeypress="if(event.key==='Enter') checkAnswer_3_5(0)"> 
                 <button onclick="checkAnswer_3_5(0)" style="cursor:pointer; padding:4px 8px;">Check</button>
             </div>
             <div id="fb-0"></div>
         `;
-    } else if(state.level === 1) {
+    } else if (state.level === 1) {
         div.innerHTML = `
-            <h4 style="margin:0 0 10px 0; color:#c0392b;">Level 2: Stored Energy</h4>
-            <p>Set ${v('k')} = <b>200 N/m</b>.</p>
-            <p>Compress by ${v('x')} = <b>1.0 m</b>.</p>
-            <p>Calculate the Elastic Potential Energy: ${v('U<sub>s</sub>')} = &frac12;${v('kx²')}.</p>
+            <h4 style="margin:0 0 10px 0; color:#c0392b;">Level 2: The Upgrade</h4>
+            <p>You need to lift a <b>100.0 kg</b> crate to a height of <b>20.0 m</b>.</p>
+            <p>The boss demands this is done in exactly <b>10.0 seconds</b>.</p>
+            <p>Calculate the exact Power (${v('P')}) required from the motor.</p>
             <div style="margin-top:10px;">
-                <input type="number" id="ans-2" placeholder="Joules" style="width:80px; padding:4px;" 
+                <input type="number" id="ans-2" placeholder="Watts" style="width:100px; padding:4px;" 
                        onkeypress="if(event.key==='Enter') checkAnswer_3_5(1)"> 
                 <button onclick="checkAnswer_3_5(1)" style="cursor:pointer; padding:4px 8px;">Check</button>
             </div>
             <div id="fb-1"></div>
         `;
-    } else if(state.level === 2) {
+    } else if (state.level === 2) {
         div.innerHTML = `
-            <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 3: Launch Speed</h4>
-            <p>Set ${v('k')} = <b>100 N/m</b>, ${v('m')} = <b>2.0 kg</b>, ${v('x')} = <b>2.0 m</b>.</p>
-            <p>Upon release, all ${v('U<sub>s</sub>')} becomes ${v('K')}.</p>
-            <p>Calculate the final velocity ${v('v')}.</p>
+            <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 3: Mystery Crate</h4>
+            <p>A mystery crate needs to go to ${v('h')} = <b>15.0 m</b>.</p>
+            <p>Set the motor to ${v('P')} = <b>1200 W</b> and lift the crate.</p>
+            <p>Watch the timer. Use the final time and power to calculate the crate's Mass (${v('m')}).</p>
             <div style="margin-top:10px;">
-                <input type="number" id="ans-3" placeholder="m/s" style="width:80px; padding:4px;" 
+                <input type="number" id="ans-3" placeholder="kg" style="width:100px; padding:4px;" 
                        onkeypress="if(event.key==='Enter') checkAnswer_3_5(2)"> 
                 <button onclick="checkAnswer_3_5(2)" style="cursor:pointer; padding:4px 8px;">Check</button>
             </div>
@@ -9688,63 +9673,64 @@ function renderQuestions_3_5() {
         `;
     } else {
         div.innerHTML = `
-            <h3 style="color:#f39c12; margin:0;">&#9733; SPRING MASTER &#9733;</h3>
-            <p>You have mastered Elastic Energy!</p>
+            <h3 style="color:#f39c12; margin:0;">&#9733; POWER PLANT &#9733;</h3>
+            <p>You have mastered Work and Power!</p>
         `;
     }
 }
 
 function checkAnswer_3_5(lvl) {
     let correct = false;
-    let fb = document.getElementById('fb-'+lvl);
-    const v = (text) => `<i class="var">${text}</i>`;
-
-    if(lvl === 0) {
+    let fb = document.getElementById('fb-' + lvl);
+    
+    if (lvl === 0) {
         let val = parseFloat(document.getElementById('ans-1').value);
-        // F = 100 * 1.5 = 150
-        if(state.k === 100 && state.x === 1.5 && Math.abs(val - 150) < 5) correct = true;
-        else if (state.k !== 100 || state.x !== 1.5) {
-            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Set sliders to k=100, x=1.5!</span>`;
-            return;
+        // W = 50 * 10 * 10 = 5000 J. P = 1000 W. t = W/P = 5000/1000 = 5.0 s.
+        if (state.m === 50.0 && state.h === 10.0 && state.pApp === 1000 && Math.abs(val - 5.0) < 0.2) {
+            correct = true;
+        } else if (state.m !== 50.0 || state.h !== 10.0 || state.pApp !== 1000) {
+             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Set sliders to the prompt values first!</span>`;
+             return;
         }
-    }
-    else if(lvl === 1) {
+    } else if (lvl === 1) {
         let val = parseFloat(document.getElementById('ans-2').value);
-        // U = 0.5 * 200 * 1^2 = 100 J
-        if(state.k === 200 && state.x === 1.0 && Math.abs(val - 100) < 5) correct = true;
-        else if (state.k !== 200) {
-            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Set k=200, x=1.0!</span>`;
-            return;
+        // W = 100 * 10 * 20 = 20000 J. Target t = 10.0 s.
+        // P = 20000 / 10.0 = 2000 W.
+        if (state.m === 100.0 && state.h === 20.0 && Math.abs(val - 2000.0) < 10.0) {
+            correct = true;
+        } else if (state.m !== 100.0 || state.h !== 20.0) {
+             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Set Mass to 100 and Height to 20!</span>`;
+             return;
         }
-    }
-    else if(lvl === 2) {
+    } else if (lvl === 2) {
         let val = parseFloat(document.getElementById('ans-3').value);
-        // U = 0.5 * 100 * 4 = 200 J
-        // K = 200 = 0.5 * 2 * v^2 = v^2
-        // v = sqrt(200) = 14.14
-        if(state.k === 100 && state.m === 2.0 && state.x === 2.0 && Math.abs(val - 14.1) < 0.5) correct = true;
-        else if (state.m !== 2.0) {
-            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Check your sliders (k=100, m=2, x=2)!</span>`;
-            return;
+        // Mystery mass is 80 kg.
+        if (Math.abs(val - 80.0) < 1.0) {
+            correct = true;
+        } else {
+             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Incorrect. Lift the crate, read the final time, and use P = mgh/t.</span>`;
+             return;
         }
     }
 
-    if(correct) {
+    if (correct) {
         fb.innerHTML = "<span style='color:green; font-weight:bold;'>Correct! Unlocking next step...</span>";
         setTimeout(() => {
             state.level++;
             saveProgress('3.5', state.level);
-            
-            if(state.level >= 3) document.getElementById('u3-5-badge').style.display = 'block';
+            if (state.level >= 3) {
+                document.getElementById('u3-5-badge').style.display = 'block';
+            }
             renderQuestions_3_5();
             reset_3_5();
         }, 1500);
     } else {
-        fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Incorrect. Check your formula!</span>`;
+        fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Incorrect. Check your math!</span>`;
     }
 }
 
 function checkLevel_3_5() {
+    // Empty, levels are strictly validated by input answers here.
 }
 
 // ===============================================
