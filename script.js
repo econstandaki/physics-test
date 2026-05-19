@@ -8589,7 +8589,7 @@ function checkLevel_3_3() {
 }
 
 // ===============================================
-// === UNIT 3.4: CONSERVATION OF ENERGY (Gold Standard v4.6) ===
+// === UNIT 3.4: CONSERVATION OF ENERGY (Gold Standard v4.8) ===
 // ===============================================
 
 function setup_3_4() {
@@ -8601,9 +8601,9 @@ function setup_3_4() {
     document.getElementById('sim-desc').innerHTML = `
         <h3 style="margin-top:0; margin-bottom:10px;">The Roller Coaster</h3>
         <p style="margin-bottom:10px; line-height:1.4;">
-        Energy cannot be created or destroyed, only transformed.
+        Energy cannot be created or destroyed, only transformed. Friction converts mechanical energy into thermal energy.
         <br><b>Equation:</b> <i class="var">E<sub>total</sub></i> = <i class="var">K</i> + <i class="var">U<sub>g</sub></i> + <i class="var">E<sub>th</sub></i>
-        <br><i><b>Mission:</b> Convert potential energy into speed without running out!</i></p>`;
+        <br><i><b>Mission:</b> Convert potential energy into speed and manage frictional losses!</i></p>`;
 
     document.getElementById('sim-controls').innerHTML = `
         <div style="background:#eef2f3; padding:10px; border-radius:5px; margin-bottom:15px; border:1px solid #ccc; display:flex; justify-content:space-between; align-items:center;">
@@ -8631,7 +8631,7 @@ function setup_3_4() {
                 <span>Mass (<i class="var">m</i>):</span>
                 <span><span id="v-m">100</span> kg</span>
             </label>
-            <input type="range" id="in-m" class="phys-slider" min="50" max="200" step="10" value="100" 
+            <input type="range" id="in-m" class="phys-slider" min="50" max="250" step="10" value="100" 
                 oninput="updateState_3_4('m', this.value)">
         </div>
 
@@ -8647,9 +8647,9 @@ function setup_3_4() {
         <div class="control-group" style="border-left: 4px solid #c0392b; padding-left: 10px; margin-top:10px;">
             <label style="color:#c0392b; font-weight:bold; display:flex; justify-content:space-between;">
                 <span>Friction (<i class="var">&mu;</i>):</span>
-                <span><span id="v-mu">0.0</span></span>
+                <span><span id="v-mu">0.00</span></span>
             </label>
-            <input type="range" id="in-mu" class="phys-slider" min="0.0" max="0.2" step="0.01" value="0.0" 
+            <input type="range" id="in-mu" class="phys-slider" min="0.00" max="0.30" step="0.01" value="0.00" 
                 oninput="updateState_3_4('mu', this.value)">
         </div>
 
@@ -8668,11 +8668,11 @@ function setup_3_4() {
         const max = parseFloat(e.target.max);
         const val = parseFloat(e.target.value);
         let clientX = e.clientX;
-        if(e.type === 'touchstart') clientX = e.touches[0].clientX;
+        if (e.type === 'touchstart') clientX = e.touches[0].clientX;
         const ratio = (val - min) / (max - min);
         const clickX = clientX - rect.left;
         const thumbX = ratio * rect.width;
-        if(Math.abs(clickX - thumbX) > 35) e.preventDefault();
+        if (Math.abs(clickX - thumbX) > 35) e.preventDefault();
     };
 
     document.querySelectorAll('.phys-slider').forEach(s => {
@@ -8684,12 +8684,13 @@ function setup_3_4() {
 }
 
 function updateState_3_4(key, val) {
-    if(state.running) return;
+    if (state.running) return;
     
     state[key] = parseFloat(val);
-    if(key === 'm') document.getElementById('v-m').innerText = state.m.toFixed(0);
-    if(key === 'h') document.getElementById('v-h').innerText = state.h.toFixed(1);
-    if(key === 'mu') document.getElementById('v-mu').innerText = state.mu.toFixed(2);
+    
+    if (key === 'm') document.getElementById('v-m').innerText = state.m.toFixed(0);
+    if (key === 'h') document.getElementById('v-h').innerText = state.h.toFixed(1);
+    if (key === 'mu') document.getElementById('v-mu').innerText = state.mu.toFixed(2);
     
     calcInitialEnergy_3_4();
     updateCalcDisplay_3_4();
@@ -8701,14 +8702,19 @@ function setMode_3_4(mode) {
     const qDiv = document.getElementById('u3-4-questions');
     const badge = document.getElementById('u3-4-badge');
 
-    if(state.level >= 3) badge.style.display = 'block';
-    else badge.style.display = 'none';
+    if (state.level >= 3) {
+        badge.style.display = 'block';
+    } else {
+        badge.style.display = 'none';
+    }
 
-    if(mode === 'challenge') {
+    if (mode === 'challenge') {
         qDiv.style.display = 'none';
-        // Unlock all
-        document.getElementById('in-mu').disabled = false;
-        document.getElementById('in-mu').parentElement.style.opacity = "1.0";
+        
+        ['in-m', 'in-h', 'in-mu'].forEach(id => {
+            document.getElementById(id).disabled = false;
+            document.getElementById(id).parentElement.style.opacity = "1.0";
+        });
     } else {
         qDiv.style.display = 'block';
         renderQuestions_3_4();
@@ -8725,15 +8731,19 @@ function updateLocks_3_4() {
     let lock = state.running;
     
     sliders.forEach(s => {
-        if(state.mode === 'guided' && (state.level === 0 || state.level === 1) && s.id === 'in-mu') {
-            s.disabled = true; // Lock friction for first two levels
-            s.parentElement.style.opacity = "0.5";
-            return;
+        if (state.mode === 'guided') {
+            if ((state.level === 0 || state.level === 1) && s.id === 'in-mu') {
+                s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+            }
+            if (state.level === 2 && (s.id === 'in-m' || s.id === 'in-h')) {
+                s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+            }
         }
         
         s.disabled = lock;
         s.style.opacity = lock ? "0.5" : "1.0";
     });
+    
     runBtn.disabled = lock;
     runBtn.style.opacity = lock ? "0.5" : "1.0";
 }
@@ -8741,10 +8751,8 @@ function updateLocks_3_4() {
 function calcInitialEnergy_3_4() {
     let g = 9.8;
     state.uStart = state.m * g * state.h;
-    state.kStart = 0;
     state.eTotal = state.uStart;
     
-    // Reset live values
     state.u = state.uStart;
     state.k = 0;
     state.eTh = 0;
@@ -8753,41 +8761,35 @@ function calcInitialEnergy_3_4() {
 
 function updateCalcDisplay_3_4() {
     let box = document.getElementById('calc-3-4');
-    if(!box) return;
+    if (!box) return;
     
     const v = (t) => `<i class="var" style="font-family:'Times New Roman',serif">${t}</i>`;
-    
-    let uDisplay = (state.u / 1000).toFixed(1);
-    let kDisplay = (state.k / 1000).toFixed(1);
-    let ethDisplay = (state.eTh / 1000).toFixed(1);
-    let totalDisplay = (state.eTotal / 1000).toFixed(1);
     
     box.innerHTML = `
         <div style="margin-bottom:5px; font-size:0.9em; color:#555;">
             ${v('E<sub>tot</sub>')} = ${v('U<sub>g</sub>')} + ${v('K')} + ${v('E<sub>th</sub>')}
         </div>
-        <div style="font-size:1.1em; display:flex; justify-content:space-between;">
-            <span><b>${totalDisplay} kJ</b> =</span>
-            <span style="color:#2980b9;">${uDisplay}</span> + 
-            <span style="color:#27ae60;">${kDisplay}</span> + 
-            <span style="color:#c0392b;">${ethDisplay}</span>
+        <div style="font-size:1.1em; display:flex; justify-content:space-between; margin-bottom:8px;">
+            <span><b>${state.eTotal.toFixed(0)} J</b> =</span>
+            <span style="color:#2980b9;">${state.u.toFixed(0)} J</span> + 
+            <span style="color:#27ae60;">${state.k.toFixed(0)} J</span> + 
+            <span style="color:#c0392b;">${state.eTh.toFixed(0)} J</span>
+        </div>
+        <div style="font-size:0.85em; color:#777;">
+            Total Energy: (${state.m.toFixed(0)} kg)(9.8 m/s&sup2;)(${state.h.toFixed(1)} m) = ${state.eTotal.toFixed(0)} J
         </div>
     `;
 }
 
 function start_3_4() {
-    if(!state.running) {
+    if (!state.running) {
         state.running = true;
         state.t = 0;
-        state.trackPos = 0; // x-coordinate
-        state.trackLength = 600; // end of track
+        state.trackPos = 1.0; // Start at 1 pixel in so the slope isn't completely flat
+        state.v = 0.0;
+        state.stopTimer = 0.0;
         
-        // Reset dynamic energies
-        state.u = state.uStart;
-        state.k = 0;
-        state.eTh = 0;
-        state.v = 0;
-        
+        calcInitialEnergy_3_4();
         updateLocks_3_4();
         loop_3_4();
     }
@@ -8803,24 +8805,39 @@ function reset_3_4() {
         
         trackPos: 0,
         t: 0,
+        v: 0,
+        stopTimer: 0,
         running: false,
         
-        u: 0, k: 0, eTh: 0, eTotal: 0, v: 0,
+        u: 0, 
+        k: 0, 
+        eTh: 0, 
+        eTotal: 0,
         
         mode: document.querySelector('input[name="sim-mode"]:checked').value,
         level: savedLevel
     };
     
-    // Level Controls
-    if(state.mode === 'guided' && state.level <= 1) {
-        state.mu = 0;
-        document.getElementById('in-mu').value = 0;
-        document.getElementById('v-mu').innerText = "0.0";
+    if (state.mode === 'guided') {
+        if (state.level <= 1) {
+            state.mu = 0;
+            document.getElementById('in-mu').value = 0;
+            document.getElementById('v-mu').innerText = "0.00";
+        } else if (state.level === 2) {
+            state.m = 100;
+            state.h = 10.0;
+            document.getElementById('in-m').value = 100;
+            document.getElementById('in-h').value = 10.0;
+            document.getElementById('v-m').innerText = "100";
+            document.getElementById('v-h').innerText = "10.0";
+        }
     }
     
     calcInitialEnergy_3_4();
 
-    if(state.level >= 3) document.getElementById('u3-4-badge').style.display = 'block';
+    if (state.level >= 3) {
+        document.getElementById('u3-4-badge').style.display = 'block';
+    }
 
     setMode_3_4(state.mode);
     updateCalcDisplay_3_4();
@@ -8832,104 +8849,103 @@ function reset_3_4() {
     });
 }
 
-// Track Geometry Function: Returns y (height in m) for a given x (pixels)
-// Canvas Height is 640. Ground is at y=500?
-// x from 0 to 700.
-// Let's define the track in meters relative to ground.
-// x_m = x_px / 40.
 function getTrackHeight_3_4(x_px) {
-    let x = x_px / 40; // Convert to meters
-    let h0 = state.h; // Starting height
+    let x = x_px / 40.0; // 40 pixels per meter
+    let h0 = state.h;
     
-    // Section 1: Drop (x = 0 to 5m) - Cosine curve from h0 to 0
-    // y = A cos(Bx) + C
-    // Start (0, h0), End (5, 0).
-    // Half period of cosine.
-    if(x < 5) {
-        return (h0 / 2) * (Math.cos(Math.PI * x / 5) + 1);
-    }
-    // Section 2: Valley (x = 5 to 8m) - Flat at 0
-    else if(x < 8) {
-        return 0;
-    }
-    // Section 3: Hill (x = 8 to 14m) - Sine bump
-    // Peak at x=11. Height = 6m (fixed second hill)
-    else if(x < 14) {
-        let h_hill = 6.0;
-        // Map x [8,14] to [-PI, PI]?
-        // -cos gives a bump. 
-        // x_local = x - 8. Range 0 to 6.
-        return (h_hill / 2) * (1 - Math.cos(2 * Math.PI * (x - 8) / 6));
-    }
-    // Section 4: End Flat (x > 14)
-    else {
-        return 0;
+    if (x < 5.0) {
+        return (h0 / 2.0) * (Math.cos(Math.PI * x / 5.0) + 1.0);
+    } else if (x < 8.0) {
+        return 0.0;
+    } else if (x < 14.0) {
+        // Second hill is strictly 6m high
+        return 3.0 * (1.0 - Math.cos(2.0 * Math.PI * (x - 8.0) / 6.0));
+    } else {
+        return 0.0;
     }
 }
 
 function getTrackSlopeAngle_3_4(x_px) {
-    // Simple numerical derivative
-    let dx = 1; 
-    let dy = getTrackHeight_3_4(x_px + dx) - getTrackHeight_3_4(x_px);
-    // Slope = dy/dx (meters). Canvas y is inverted, but getTrackHeight returns Physics Height (+ is up).
-    // So positive slope means going uphill.
-    // However, canvas drawing needs adjustment.
-    return Math.atan(dy / (dx/40)); 
+    let dx_px = 0.1;
+    let y1 = getTrackHeight_3_4(x_px);
+    let y2 = getTrackHeight_3_4(x_px + dx_px);
+    let dy_m = y2 - y1;
+    let dx_m = dx_px / 40.0;
+    
+    // Returns angle in radians. Uphill = positive angle.
+    return Math.atan2(dy_m, dx_m); 
 }
 
 function loop_3_4() {
-    if(currentSim !== '3.4') return;
+    if (currentSim !== '3.4') return;
 
-    if(state.running) {
+    if (state.running) {
         let dt = 0.02;
         state.t += dt;
         
-        let xOld = state.trackPos;
-        // Estimate velocity from Kinetic Energy
-        // K = E_tot - U - E_th
-        // U = mgh
-        let curH = getTrackHeight_3_4(state.trackPos);
-        state.u = state.m * 9.8 * curH;
-        
-        // Calculate Friction Loss
-        // dE_th = force_fric * distance
-        // F_f = mu * F_N.
-        // Approximate F_N ~ mg cos(theta) + F_c.
-        // For stability, let's ignore F_c in friction term and just use slope.
         let theta = getTrackSlopeAngle_3_4(state.trackPos);
-        let f_n = state.m * 9.8 * Math.cos(theta);
-        if(f_n < 0) f_n = 0; // Shouldn't happen on this track
+        let g = 9.8;
         
-        let v_inst = Math.sqrt(2 * state.k / state.m) || 0;
-        let distStep = v_inst * dt;
+        let f_grav = -state.m * g * Math.sin(theta);
+        let f_norm = state.m * g * Math.cos(theta);
+        if (f_norm < 0) f_norm = 0;
         
-        let dEth = state.mu * f_n * distStep;
+        let f_fric_max = state.mu * f_norm;
+        let f_fric = 0;
         
-        state.eTh += dEth;
-        state.k = state.eTotal - state.u - state.eTh;
-        
-        // Check if stuck (K < 0)
-        if(state.k <= 0) {
-            state.k = 0;
-            state.v = 0;
-            state.running = false; // Stopped
+        if (Math.abs(state.v) > 0.05) {
+            f_fric = -Math.sign(state.v) * f_fric_max;
         } else {
-            state.v = Math.sqrt(2 * state.k / state.m);
-            // Move cart
-            // dx = ds * cos(theta).
-            // But x is our primary coordinate.
-            // ds = dx / cos(theta).
-            // v = ds/dt. -> dx/dt = v * cos(theta).
-            
-            // Correction: If slope is steep, x moves slower.
-            let dx = state.v * Math.cos(theta) * dt * 40; // 40 px/m
-            state.trackPos += dx;
+            // Cart is very slow. Check if static friction holds it.
+            if (Math.abs(f_grav) > f_fric_max) {
+                f_fric = -Math.sign(f_grav) * f_fric_max;
+            } else {
+                f_fric = -f_grav; // Perfect cancellation
+                state.v = 0.0;
+            }
         }
         
-        // Stop at end
-        if(state.trackPos > 650) {
+        let a = (f_grav + f_fric) / state.m;
+        state.v += a * dt;
+        
+        // Convert tangential velocity to horizontal pixel movement
+        let ds = state.v * dt;
+        let dx_m = ds * Math.cos(theta);
+        state.trackPos += dx_m * 40.0;
+        
+        // Update Energies
+        let curH = getTrackHeight_3_4(state.trackPos);
+        state.u = state.m * g * curH;
+        state.k = 0.5 * state.m * (state.v * state.v);
+        
+        // Thermal energy is the remainder (ensuring it never decreases)
+        let newEth = state.eTotal - state.u - state.k;
+        if (newEth > state.eTh) {
+            state.eTh = newEth;
+        } else {
+            // If numerical integration causes slight jitter, enforce conservation
+            state.k = state.eTotal - state.u - state.eTh;
+            if (state.k < 0) state.k = 0;
+        }
+        
+        // Stopping Conditions
+        if (Math.abs(state.v) < 0.01 && Math.abs(f_grav) <= f_fric_max) {
+            state.stopTimer += dt;
+            if (state.stopTimer > 1.0) {
+                state.running = false;
+            }
+        } else {
+            state.stopTimer = 0.0;
+        }
+        
+        if (state.trackPos > 650 || state.trackPos < 0) {
             state.running = false;
-            if(state.mode === 'guided') checkLevel_3_4();
+        }
+        
+        if (!state.running) {
+            if (state.mode === 'guided') {
+                checkLevel_3_4();
+            }
             updateLocks_3_4();
         }
     }
@@ -8937,137 +8953,138 @@ function loop_3_4() {
     updateCalcDisplay_3_4();
     draw_3_4();
     
-    if(state.running) requestAnimationFrame(loop_3_4);
+    if (state.running) {
+        requestAnimationFrame(loop_3_4);
+    }
 }
 
 function draw_3_4() {
-    ctx.clearRect(0,0,canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // === ZONE 1: WORLD (Top 400px) ===
     let groundY = 400;
     
-    // Draw Track
+    // Draw Track Path
     ctx.beginPath();
-    ctx.strokeStyle = "#7f8c8d"; ctx.lineWidth = 5;
-    for(let x=0; x<=700; x+=5) {
+    ctx.strokeStyle = "#7f8c8d"; 
+    ctx.lineWidth = 6;
+    
+    for (let x = 0; x <= 700; x += 5) {
         let h = getTrackHeight_3_4(x);
-        let y = groundY - h * 40; // 40px scale
-        if(x===0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        let y = groundY - h * 40;
+        if (x === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
     }
     ctx.stroke();
     
-    // Supports
+    // Draw Supports
     ctx.fillStyle = "#bdc3c7";
-    for(let x=0; x<=700; x+=50) {
+    for (let x = 0; x <= 700; x += 50) {
         let h = getTrackHeight_3_4(x);
         let y = groundY - h * 40;
-        if(h > 0.1) ctx.fillRect(x-2, y, 4, groundY-y);
+        if (h > 0.1) {
+            ctx.fillRect(x - 2, y, 4, groundY - y);
+        }
     }
     
-    // Ground
-    ctx.fillStyle = "#2c3e50"; ctx.fillRect(0, groundY, 700, 20);
+    // Draw Ground
+    ctx.fillStyle = "#2c3e50"; 
+    ctx.fillRect(0, groundY, 700, 20);
     
-    // Cart
+    // Draw Cart
     let cx = state.trackPos;
     let ch = getTrackHeight_3_4(cx);
     let cy = groundY - ch * 40;
+    let theta = getTrackSlopeAngle_3_4(cx);
     
-    // Rotation
-    let theta = getTrackSlopeAngle_3_4(cx); // radians, + is uphill
-    // Canvas rotation: + is clockwise. 
-    // Uphill (positive slope) means we need to rotate Counter-Clockwise (-theta)
+    // Dynamic cart sizing based on mass
+    let cw = 20 + state.m * 0.2; 
+    let ch_box = 10 + state.m * 0.1;
     
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.rotate(-theta); // Align with track
+    // Canvas rotation is CW. For uphill (theta > 0), we must tilt CCW visually.
+    ctx.rotate(-theta); 
     
-    // Cart Body
-    ctx.fillStyle = "#e67e22"; ctx.fillRect(-15, -15, 30, 15);
-    // Wheels
+    ctx.fillStyle = "#e67e22"; 
+    ctx.fillRect(-cw / 2, -ch_box - 5, cw, ch_box);
+    
     ctx.fillStyle = "#333"; 
-    ctx.beginPath(); ctx.arc(-10, 0, 4, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(10, 0, 4, 0, Math.PI*2); ctx.fill();
-    // Passenger
-    ctx.fillStyle = "#3498db"; ctx.beginPath(); ctx.arc(0, -20, 6, 0, Math.PI*2); ctx.fill();
-    ctx.fillRect(-5, -15, 10, 8);
+    ctx.beginPath(); 
+    ctx.arc(-cw / 3, -5, 5, 0, Math.PI * 2); 
+    ctx.fill();
+    ctx.beginPath(); 
+    ctx.arc(cw / 3, -5, 5, 0, Math.PI * 2); 
+    ctx.fill();
     
     ctx.restore();
     
-    // Velocity Vector (Green)
-    if(state.v > 0.5) {
-        let vScale = 3.0;
-        // Velocity is tangent
-        let vx = state.v * Math.cos(theta) * vScale;
-        let vy = state.v * Math.sin(theta) * vScale; // Phys Y
-        // Canvas dy = -vy
-        drawVector_3_4(cx, cy - 10, vx, -vy, "#27ae60", "");
-    }
+    // Height Text
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.font = "12px sans-serif";
+    ctx.fillText("h = " + ch.toFixed(1) + "m", cx + 25, cy - 25);
     
-    // Height Marker
-    ctx.fillStyle = "rgba(0,0,0,0.5)";
-    ctx.font = "10px sans-serif";
-    ctx.fillText("h=" + ch.toFixed(1) + "m", cx + 20, cy - 20);
+    // Target Zone overlay for Level 3
+    if (state.mode === 'guided' && state.level === 2) {
+        let targetStart = 10.0 * 40; // 10 meters
+        let targetEnd = 12.0 * 40;   // 12 meters
+        ctx.fillStyle = "rgba(46, 204, 113, 0.3)";
+        ctx.fillRect(targetStart, groundY - 240, targetEnd - targetStart, 240);
+        ctx.fillStyle = "#27ae60";
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillText("TARGET ZONE", targetStart + 5, groundY - 250);
+    }
 
-
-    // === ZONE 2: ENERGY BARS (Bottom) ===
+    // === ZONE 2: ENERGY BARS ===
     let barY = 450;
     let barH = 150;
     let barW = 60;
     let gap = 40;
     let startX = 150;
     
-    let maxE = 200 * 9.8 * 15; // Max possible (200kg * 15m) approx 30kJ
-    // Better scale: Max of current setup
-    let currentMax = state.eTotal; 
-    // Avoid div by zero
-    if(currentMax < 1) currentMax = 1000;
+    let currentMax = Math.max(state.eTotal, 1000); 
     
     const drawBar = (x, val, color, label) => {
         let h = (val / currentMax) * barH;
         let y = barY + barH - h;
-        ctx.fillStyle = color; ctx.fillRect(x, y, barW, h);
-        ctx.strokeStyle = "#333"; ctx.strokeRect(x, barY, barW, barH); // Frame
         
-        ctx.fillStyle = "#333"; ctx.textAlign="center"; ctx.font = "bold 12px sans-serif";
-        ctx.fillText(label, x + barW/2, barY + barH + 15);
-        ctx.fillText((val/1000).toFixed(1) + "k", x + barW/2, y - 5);
+        ctx.fillStyle = color; 
+        ctx.fillRect(x, y, barW, h);
+        
+        ctx.strokeStyle = "#333"; 
+        ctx.strokeRect(x, barY, barW, barH); 
+        
+        ctx.fillStyle = "#333"; 
+        ctx.textAlign = "center"; 
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillText(label, x + barW / 2, barY + barH + 15);
+        ctx.fillText((val / 1000).toFixed(1) + " kJ", x + barW / 2, y - 5);
     };
     
     drawBar(startX, state.u, "#2980b9", "Potential (U)");
     drawBar(startX + barW + gap, state.k, "#27ae60", "Kinetic (K)");
-    drawBar(startX + 2*(barW + gap), state.eTh, "#c0392b", "Thermal (Eth)");
+    drawBar(startX + 2 * (barW + gap), state.eTh, "#c0392b", "Thermal (Eth)");
     
-    // Total Line
-    let totalH = barH; // Since we scaled to currentMax
-    ctx.strokeStyle = "#f39c12"; ctx.lineWidth=2; ctx.setLineDash([5,5]);
-    let lineY = barY; 
-    ctx.beginPath(); ctx.moveTo(startX - 20, lineY); ctx.lineTo(startX + 3*barW + 2*gap + 20, lineY); ctx.stroke();
+    // Total Energy Line
+    ctx.strokeStyle = "#f39c12"; 
+    ctx.lineWidth = 2; 
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath(); 
+    ctx.moveTo(startX - 20, barY); 
+    ctx.lineTo(startX + 3 * barW + 2 * gap + 20, barY); 
+    ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = "#f39c12"; ctx.fillText("Total E", startX - 30, lineY + 5);
-}
-
-function drawVector_3_4(x, y, dx, dy, color, label) {
-    let endX = x + dx;
-    let endY = y + dy; 
-    
-    ctx.strokeStyle = color; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(endX, endY); ctx.stroke();
-    
-    let angle = Math.atan2(dy, dx);
-    let headLen = 8;
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(endX, endY);
-    ctx.lineTo(endX - headLen * Math.cos(angle - Math.PI/6), endY - headLen * Math.sin(angle - Math.PI/6));
-    ctx.lineTo(endX - headLen * Math.cos(angle + Math.PI/6), endY - headLen * Math.sin(angle + Math.PI/6));
-    ctx.fill();
+    ctx.fillStyle = "#f39c12"; 
+    ctx.fillText("Total E", startX - 30, barY + 5);
 }
 
 function renderQuestions_3_4() {
     let div = document.getElementById('u3-4-questions');
     const v = (text) => `<i class="var">${text}</i>`;
 
-    if(state.level === 0) {
+    if (state.level === 0) {
         div.innerHTML = `
             <h4 style="margin:0 0 10px 0; color:#2980b9;">Level 1: The Drop</h4>
             <p>Start at ${v('h<sub>0</sub>')} = <b>10.0 m</b>. (Valley is at 0m).</p>
@@ -9080,13 +9097,12 @@ function renderQuestions_3_4() {
             </div>
             <div id="fb-0"></div>
         `;
-    } else if(state.level === 1) {
+    } else if (state.level === 1) {
         div.innerHTML = `
             <h4 style="margin:0 0 10px 0; color:#c0392b;">Level 2: The Hill</h4>
-            <p>The second hill is <b>6.0 m</b> high.</p>
-            <p>Start at ${v('h<sub>0</sub>')} = <b>10.0 m</b>.</p>
-            <p>Calculate the speed ${v('v')} at the top of the second hill.</p>
-            <p style="font-size:0.9em; color:#666;">(Hint: ${v('K')} = ${v('U<sub>start</sub>')} - ${v('U<sub>hill</sub>')})</p>
+            <p>The second hill is exactly <b>6.0 m</b> high.</p>
+            <p>Start at ${v('h<sub>0</sub>')} = <b>10.0 m</b> with Friction at 0.</p>
+            <p>Calculate the speed ${v('v')} at the exact top of the second hill.</p>
             <div style="margin-top:10px;">
                 <input type="number" id="ans-2" placeholder="m/s" style="width:80px; padding:4px;" 
                        onkeypress="if(event.key==='Enter') checkAnswer_3_4(1)"> 
@@ -9094,18 +9110,13 @@ function renderQuestions_3_4() {
             </div>
             <div id="fb-1"></div>
         `;
-    } else if(state.level === 2) {
+    } else if (state.level === 2) {
         div.innerHTML = `
-            <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 3: Energy Loss</h4>
-            <p>Set Friction ${v('&mu;')} = <b>0.10</b>. Start at ${v('h')} = <b>10.0 m</b>.</p>
-            <p>Run the cart until it stops or passes the hill.</p>
-            <p>Read the Thermal Energy (${v('E<sub>th</sub>')}) from the red bar.</p>
-            <div style="margin-top:10px;">
-                <input type="number" id="ans-3" placeholder="kJ" style="width:80px; padding:4px;" 
-                       onkeypress="if(event.key==='Enter') checkAnswer_3_4(2)"> 
-                <button onclick="checkAnswer_3_4(2)" style="cursor:pointer; padding:4px 8px;">Check</button>
-            </div>
-            <div id="fb-2"></div>
+            <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 3: Precision Braking</h4>
+            <p>Your goal is to park the cart <b>exactly inside the green Target Zone</b> (between 10m and 12m horizontally).</p>
+            <p>Mass is locked at <b>100 kg</b> and Height at <b>10.0 m</b>.</p>
+            <p>Adjust the Friction (${v('&mu;')}) slider and release the cart to test your setup!</p>
+            <div id="fb-2" style="margin-top:10px; font-weight:bold;">Waiting for run...</div>
         `;
     } else {
         div.innerHTML = `
@@ -9117,48 +9128,33 @@ function renderQuestions_3_4() {
 
 function checkAnswer_3_4(lvl) {
     let correct = false;
-    let fb = document.getElementById('fb-'+lvl);
-    const v = (text) => `<i class="var">${text}</i>`;
-
-    if(lvl === 0) {
+    let fb = document.getElementById('fb-' + lvl);
+    
+    if (lvl === 0) {
         let val = parseFloat(document.getElementById('ans-1').value);
-        // v = sqrt(2gh) = sqrt(2 * 9.8 * 10) = 14.0
-        if(state.h === 10.0 && Math.abs(val - 14.0) < 0.5) correct = true;
-        else if (state.h !== 10.0) {
+        // v = sqrt(2 * 9.8 * 10) = 14.0
+        if (state.h === 10.0 && Math.abs(val - 14.0) < 0.5) {
+            correct = true;
+        } else if (state.h !== 10.0) {
             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Set Height to 10.0 m!</span>`;
             return;
         }
-    }
-    else if(lvl === 1) {
+    } else if (lvl === 1) {
         let val = parseFloat(document.getElementById('ans-2').value);
-        // h_diff = 10 - 6 = 4m.
-        // v = sqrt(2 * 9.8 * 4) = sqrt(78.4) = 8.85
-        if(state.h === 10.0 && Math.abs(val - 8.85) < 0.5) correct = true;
-    }
-    else if(lvl === 2) {
-        let val = parseFloat(document.getElementById('ans-3').value);
-        // Accept approximate value from bar chart reading
-        // Exact calc difficult due to path integral.
-        // We check if it matches the current state Eth.
-        if(state.mu === 0.10 && state.h === 10.0 && state.trackPos > 50) {
-            let ethKJ = state.eTh / 1000;
-            if(Math.abs(val - ethKJ) < 0.5) correct = true;
-        } else if (state.mu !== 0.10) {
-            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Set Friction to 0.10!</span>`;
-            return;
-        } else {
-            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Run the sim first!</span>`;
-            return;
+        // v = sqrt(2 * 9.8 * (10 - 6)) = sqrt(78.4) = 8.85
+        if (state.h === 10.0 && Math.abs(val - 8.85) < 0.5) {
+            correct = true;
         }
     }
 
-    if(correct) {
+    if (correct) {
         fb.innerHTML = "<span style='color:green; font-weight:bold;'>Correct! Unlocking next step...</span>";
         setTimeout(() => {
             state.level++;
             saveProgress('3.4', state.level);
-            
-            if(state.level >= 3) document.getElementById('u3-4-badge').style.display = 'block';
+            if (state.level >= 3) {
+                document.getElementById('u3-4-badge').style.display = 'block';
+            }
             renderQuestions_3_4();
             reset_3_4();
         }, 1500);
@@ -9168,6 +9164,24 @@ function checkAnswer_3_4(lvl) {
 }
 
 function checkLevel_3_4() {
+    if (state.mode === 'guided' && state.level === 2) {
+        let fb = document.getElementById('fb-2');
+        
+        let currentPos_m = state.trackPos / 40.0;
+        
+        if (currentPos_m >= 10.0 && currentPos_m <= 12.0) {
+            fb.innerHTML = "<span style='color:green;'>Perfect Parking! You mastered the friction! Unlocking mastery...</span>";
+            setTimeout(() => {
+                state.level++;
+                saveProgress('3.4', state.level);
+                document.getElementById('u3-4-badge').style.display = 'block';
+                renderQuestions_3_4();
+                reset_3_4();
+            }, 2000);
+        } else {
+            fb.innerHTML = `<span style='color:#c0392b;'>Missed! The cart stopped at ${currentPos_m.toFixed(1)} m. Change Friction and try again.</span>`;
+        }
+    }
 }
 
 // ===============================================
