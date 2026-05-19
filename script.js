@@ -7140,7 +7140,7 @@ function checkLevel_2_9() {
 }
 
 // ===============================================
-// === UNIT 3.1: TRANSLATIONAL KINETIC ENERGY (Gold Standard v4.6) ===
+// === UNIT 3.1: TRANSLATIONAL KINETIC ENERGY (Gold Standard v4.9) ===
 // ===============================================
 
 function setup_3_1() {
@@ -7150,11 +7150,11 @@ function setup_3_1() {
     document.getElementById('sim-title').innerText = "3.1 Translational Kinetic Energy";
     
     document.getElementById('sim-desc').innerHTML = `
-        <h3 style="margin-top:0; margin-bottom:10px;">The Energy of Motion</h3>
+        <h3 style="margin-top:0; margin-bottom:10px;">The Work-Energy Theorem</h3>
         <p style="margin-bottom:10px; line-height:1.4;">
-        Moving objects possess Kinetic Energy ($K$). It depends on mass and the <b>square</b> of velocity.
-        <br><b>Equation:</b> <i class="var">K</i> = &frac12;<i class="var">mv</i>²
-        <br><i><b>Mission:</b> See how speed affects stopping distance!</i></p>`;
+        Doing Work on an object changes its Kinetic Energy. Applying a Force over a Distance accelerates the object.
+        <br><b>Equations:</b> <i class="var">W</i> = <i class="var">Fd</i> &nbsp;|&nbsp; <i class="var">K</i> = &frac12;<i class="var">mv</i>&sup2; &nbsp;|&nbsp; <i class="var">W</i> = &Delta;<i class="var">K</i>
+        <br><i><b>Mission:</b> Apply force to the block to build up Kinetic Energy!</i></p>`;
 
     document.getElementById('sim-controls').innerHTML = `
         <div style="background:#eef2f3; padding:10px; border-radius:5px; margin-bottom:15px; border:1px solid #ccc; display:flex; justify-content:space-between; align-items:center;">
@@ -7170,33 +7170,42 @@ function setup_3_1() {
                 </div>
             </div>
             <div id="u3-1-badge" style="display:none; font-weight:bold; color:#f39c12; font-family:sans-serif; text-align:right;">
-                <span style="font-size:1.5em; vertical-align:middle;">&#9733;</span> ENERGY EXPERT
+                <span style="font-size:1.5em; vertical-align:middle;">&#9733;</span> KINETIC CRUISER
             </div>
         </div>
 
         <div id="calc-3-1" style="background:white; border:1px solid #2c3e50; border-radius:4px; padding:10px; margin-bottom:15px; font-family:'Times New Roman', serif; font-size:1.0em; line-height:1.6;">
         </div>
 
-        <div class="control-group" style="border-left: 4px solid #2980b9; padding-left: 10px;">
-            <label style="color:#2980b9; font-weight:bold; display:flex; justify-content:space-between;">
+        <div class="control-group" style="border-left: 4px solid #c0392b; padding-left: 10px;">
+            <label style="color:#c0392b; font-weight:bold; display:flex; justify-content:space-between;">
                 <span>Mass (<i class="var">m</i>):</span>
-                <span><span id="v-m">1000</span> kg</span>
+                <span><span id="v-m">10.0</span> kg</span>
             </label>
-            <input type="range" id="in-m" class="phys-slider" min="500" max="2000" step="100" value="1000" 
+            <input type="range" id="in-m" class="phys-slider" min="2.0" max="20.0" step="1.0" value="10.0" 
                 oninput="updateState_3_1('m', this.value)">
         </div>
 
-        <div class="control-group" style="border-left: 4px solid #c0392b; padding-left: 10px; margin-top:10px;">
-            <label style="color:#c0392b; font-weight:bold; display:flex; justify-content:space-between;">
-                <span>Velocity (<i class="var">v</i>):</span>
-                <span><span id="v-v">10</span> m/s</span>
+        <div class="control-group" style="border-left: 4px solid #2980b9; padding-left: 10px; margin-top:10px;">
+            <label style="color:#2980b9; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>Applied Force (<i class="var">F</i>):</span>
+                <span><span id="v-f">50</span> N</span>
             </label>
-            <input type="range" id="in-v" class="phys-slider" min="5" max="30" step="1" value="10" 
-                oninput="updateState_3_1('v', this.value)">
+            <input type="range" id="in-f" class="phys-slider" min="10" max="100" step="5" value="50" 
+                oninput="updateState_3_1('fApp', this.value)">
+        </div>
+
+        <div class="control-group" style="border-left: 4px solid #8e44ad; padding-left: 10px; margin-top:10px;">
+            <label style="color:#8e44ad; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>Push Distance (<i class="var">d</i>):</span>
+                <span><span id="v-d">5.0</span> m</span>
+            </label>
+            <input type="range" id="in-d" class="phys-slider" min="1.0" max="10.0" step="0.5" value="5.0" 
+                oninput="updateState_3_1('dTarget', this.value)">
         </div>
 
         <div style="margin-top:15px; display:flex; gap:10px;">
-            <button class="btn btn-green" onclick="start_3_1()" id="btn-start">Launch Sled</button>
+            <button class="btn btn-green" onclick="start_3_1()" id="btn-start">Push Block</button>
             <button class="btn btn-red" onclick="reset_3_1()">Reset</button>
         </div>
         
@@ -7210,11 +7219,11 @@ function setup_3_1() {
         const max = parseFloat(e.target.max);
         const val = parseFloat(e.target.value);
         let clientX = e.clientX;
-        if(e.type === 'touchstart') clientX = e.touches[0].clientX;
+        if (e.type === 'touchstart') clientX = e.touches[0].clientX;
         const ratio = (val - min) / (max - min);
         const clickX = clientX - rect.left;
         const thumbX = ratio * rect.width;
-        if(Math.abs(clickX - thumbX) > 35) e.preventDefault();
+        if (Math.abs(clickX - thumbX) > 35) e.preventDefault();
     };
 
     document.querySelectorAll('.phys-slider').forEach(s => {
@@ -7226,11 +7235,13 @@ function setup_3_1() {
 }
 
 function updateState_3_1(key, val) {
-    if(state.running) return;
+    if (state.running) return;
     
     state[key] = parseFloat(val);
-    if(key === 'm') document.getElementById('v-m').innerText = state.m.toFixed(0);
-    if(key === 'v') document.getElementById('v-v').innerText = state.v.toFixed(0);
+    
+    if (key === 'm') document.getElementById('v-m').innerText = state.m.toFixed(1);
+    if (key === 'fApp') document.getElementById('v-f').innerText = state.fApp.toFixed(0);
+    if (key === 'dTarget') document.getElementById('v-d').innerText = state.dTarget.toFixed(1);
     
     calcPhysics_3_1();
     updateCalcDisplay_3_1();
@@ -7242,16 +7253,20 @@ function setMode_3_1(mode) {
     const qDiv = document.getElementById('u3-1-questions');
     const badge = document.getElementById('u3-1-badge');
 
-    if(state.level >= 3) badge.style.display = 'block';
-    else badge.style.display = 'none';
+    if (state.level >= 3) {
+        badge.style.display = 'block';
+    } else {
+        badge.style.display = 'none';
+    }
 
-    if(mode === 'challenge') {
+    if (mode === 'challenge') {
         qDiv.style.display = 'none';
-        // Unlock controls
-        document.getElementById('in-m').disabled = false;
-        document.getElementById('in-m').parentElement.style.opacity = "1.0";
-        document.getElementById('in-v').disabled = false;
-        document.getElementById('in-v').parentElement.style.opacity = "1.0";
+        
+        ['in-m', 'in-f', 'in-d'].forEach(id => {
+            document.getElementById(id).disabled = false;
+            document.getElementById(id).parentElement.style.opacity = "1.0";
+        });
+        
     } else {
         qDiv.style.display = 'block';
         renderQuestions_3_1();
@@ -7268,57 +7283,67 @@ function updateLocks_3_1() {
     let lock = state.running;
     
     sliders.forEach(s => {
-        // Special case for Level 3 (target) - we might want to lock mass but unlock velocity
-        if(state.mode === 'guided' && state.level === 2 && s.id === 'in-m') return; // Handled in reset
+        if (state.mode === 'guided') {
+            if (state.level === 0 && (s.id === 'in-f' || s.id === 'in-d')) {
+                s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+            }
+            if (state.level === 1 && (s.id === 'in-m' || s.id === 'in-f')) {
+                s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+            }
+            if (state.level === 2 && (s.id === 'in-d')) {
+                s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+            }
+        }
         
         s.disabled = lock;
         s.style.opacity = lock ? "0.5" : "1.0";
     });
+    
     runBtn.disabled = lock;
     runBtn.style.opacity = lock ? "0.5" : "1.0";
 }
 
 function calcPhysics_3_1() {
-    // K = 0.5 * m * v^2
-    state.k = 0.5 * state.m * state.v * state.v;
-    
-    // Braking Force (Constant Friction)
-    // Let's set mu such that distance is reasonable.
-    // Work = F * d = K.  d = K / F.
-    // Let's set F = 5000 N constant braking force.
-    state.f_brake = 5000;
-    state.stopDist = state.k / state.f_brake;
+    state.workTotal = state.fApp * state.dTarget;
+    state.a = state.fApp / state.m;
 }
 
 function updateCalcDisplay_3_1() {
     let box = document.getElementById('calc-3-1');
-    if(!box) return;
+    if (!box) return;
     
     const v = (t) => `<i class="var" style="font-family:'Times New Roman',serif">${t}</i>`;
     
-    let kDisplay = (state.k / 1000).toFixed(1) + " kJ"; // Kilojoules for readability
+    let currentWork = state.fApp * state.x;
+    if (currentWork > state.workTotal) currentWork = state.workTotal;
+    
+    let currentK = 0.5 * state.m * (state.v * state.v);
     
     box.innerHTML = `
         <div style="margin-bottom:10px;">
-            <div style="margin-bottom:4px; color:#555;">Kinetic Energy:</div>
+            <div style="margin-bottom:5px; color:#555;">Target Work (<i class="var">W</i>):</div>
             <div style="font-size:1.1em;">
-                ${v('K')} = &frac12;${v('mv²')} = <b>${kDisplay}</b>
+                ${v('W')} = ${v('Fd')} = <b>${state.workTotal.toFixed(0)} J</b>
+                <span style="font-size:0.8em; color:#777;">&nbsp;&nbsp;[(${state.fApp.toFixed(0)} N) &times; (${state.dTarget.toFixed(1)} m)]</span>
             </div>
         </div>
-        <div style="font-size:0.9em; color:#777;">
-            Expected Skid Distance: <b>${state.stopDist.toFixed(1)} m</b>
+        <div>
+            <div style="margin-bottom:5px; color:#555;">Live Kinetic Energy (<i class="var">K</i>):</div>
+            <div style="font-size:1.1em; color:#27ae60;">
+                ${v('K')} = &frac12;${v('mv')}&sup2; = <b>${currentK.toFixed(0)} J</b>
+                <span style="font-size:0.8em; color:#777;">&nbsp;&nbsp;[&frac12; &times; (${state.m.toFixed(1)} kg) &times; (${state.v.toFixed(1)} m/s)&sup2;]</span>
+            </div>
         </div>
     `;
 }
 
 function start_3_1() {
-    if(!state.running) {
+    if (!state.running) {
         state.running = true;
         state.t = 0;
         state.x = 0;
-        state.currentV = state.v;
-        state.skidStart = null;
-        state.stopped = false;
+        state.v = 0;
+        state.history = [];
         
         calcPhysics_3_1();
         updateLocks_3_1();
@@ -7331,41 +7356,45 @@ function reset_3_1() {
 
     state = {
         m: parseFloat(document.getElementById('in-m').value),
-        v: parseFloat(document.getElementById('in-v').value),
+        fApp: parseFloat(document.getElementById('in-f').value),
+        dTarget: parseFloat(document.getElementById('in-d').value),
         
-        x: 0,
-        currentV: 0,
+        x: 0.0, 
+        v: 0.0, 
+        a: 0.0,
         t: 0,
-        running: false,
-        stopped: false,
-        skidStart: null,
+        workTotal: 0,
         
-        k: 0,
-        stopDist: 0,
-        f_brake: 5000,
+        running: false,
+        history: [], 
         
         mode: document.querySelector('input[name="sim-mode"]:checked').value,
         level: savedLevel
     };
     
-    // Setup for Level 3 (Precision Parking)
-    if(state.mode === 'guided' && state.level === 2) {
-        // Lock Mass, force specific scenario
-        state.m = 1500; 
-        let mSlider = document.getElementById('in-m');
-        mSlider.disabled = true;
-        mSlider.parentElement.style.opacity = "0.5";
-        document.getElementById('v-m').innerText = "1500";
-    } else if (state.mode === 'guided') {
-        // Ensure unlocked for other levels
-        let mSlider = document.getElementById('in-m');
-        mSlider.disabled = false;
-        mSlider.parentElement.style.opacity = "1.0";
+    if (state.mode === 'guided') {
+        if (state.level === 0) {
+            state.m = 10.0; state.fApp = 50; state.dTarget = 8.0;
+        } else if (state.level === 1) {
+            state.m = 20.0; state.fApp = 100; state.dTarget = 5.0;
+        } else if (state.level === 2) {
+            state.m = 10.0; state.dTarget = 10.0; state.fApp = 40; // User adjusts fApp and m
+        }
+        
+        document.getElementById('in-m').value = state.m;
+        document.getElementById('in-f').value = state.fApp;
+        document.getElementById('in-d').value = state.dTarget;
+        
+        document.getElementById('v-m').innerText = state.m.toFixed(1);
+        document.getElementById('v-f').innerText = state.fApp.toFixed(0);
+        document.getElementById('v-d').innerText = state.dTarget.toFixed(1);
     }
     
     calcPhysics_3_1();
 
-    if(state.level >= 3) document.getElementById('u3-1-badge').style.display = 'block';
+    if (state.level >= 3) {
+        document.getElementById('u3-1-badge').style.display = 'block';
+    }
 
     setMode_3_1(state.mode);
     updateCalcDisplay_3_1();
@@ -7378,304 +7407,332 @@ function reset_3_1() {
 }
 
 function loop_3_1() {
-    if(currentSim !== '3.1') return;
+    if (currentSim !== '3.1') return;
 
-    if(state.running) {
+    if (state.running) {
         let dt = 0.02;
         state.t += dt;
         
-        // Physics Logic
-        // Phase 1: Moving at constant V until x = 100 (Braking Line)
-        let brakeLine = 100;
+        if (state.x < state.dTarget) {
+            state.v += state.a * dt;
+        }
         
-        if(state.x < brakeLine) {
-            state.currentV = state.v;
-            state.x += state.currentV * dt * 5; // *5 for visual speed up
-        } else {
-            // Phase 2: Braking
-            if(state.skidStart === null) state.skidStart = state.x;
+        state.x += state.v * dt;
+        
+        if (state.t * 60 % 3 < 1) { 
+            let currentK = 0.5 * state.m * (state.v * state.v);
+            state.history.push({
+                x: state.x, 
+                k: currentK
+            });
+        }
+        
+        // Let it slide a little past the target distance to show conservation
+        if (state.x >= state.dTarget + 2.0 || state.x * 40 > 650) {
+            state.running = false;
             
-            // Work-Energy: K_final = K_initial - Work_f
-            // Or simpler: a = F/m. v = v0 - at.
-            let a = state.f_brake / state.m;
-            
-            // Time since braking started
-            // Ideally we iterate v. v_new = v_old - a*dt.
-            // But we accelerated time by 5x above. Let's keep physics consistent.
-            // Visual scale: 1m = 1px? No, we need to fit ~200m track.
-            // Let's integrate properly.
-            
-            state.currentV -= a * dt * 5; // Applying accel
-            
-            if(state.currentV <= 0) {
-                state.currentV = 0;
-                state.stopped = true;
-                state.running = false; // Stop loop
-                
-                if(state.mode === 'guided') checkLevel_3_1();
-                updateLocks_3_1();
+            if (state.mode === 'guided') {
+                checkLevel_3_1();
             }
-            
-            state.x += state.currentV * dt * 5;
+            updateLocks_3_1();
         }
     }
 
+    updateCalcDisplay_3_1();
     draw_3_1();
     
-    if(state.running || state.stopped) requestAnimationFrame(loop_3_1);
+    if (state.running) {
+        requestAnimationFrame(loop_3_1);
+    }
 }
 
 function draw_3_1() {
-    ctx.clearRect(0,0,canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // === WORLD ===
-    let roadY = 300;
-    let scale = 1.0; // 1 px = 1 m
-    // We need to fit up to ~250m. Canvas 700px. Scale 2px = 1m?
-    scale = 1.5; 
+    let floorY = 280;
+    let pxPerM = 40; 
     let startX = 50;
-    let brakeLineX = startX + 100 * scale; // 100m run up
     
-    // Draw Road
-    ctx.fillStyle = "#34495e"; ctx.fillRect(0, roadY, 700, 100);
-    // Dashed Line
-    ctx.strokeStyle = "#f1c40f"; ctx.lineWidth=2; ctx.setLineDash([20, 20]);
-    ctx.beginPath(); ctx.moveTo(0, roadY+50); ctx.lineTo(700, roadY+50); ctx.stroke();
+    // Background Frame & Floor
+    ctx.fillStyle = "#ecf0f1";
+    ctx.fillRect(0, 0, 700, floorY);
+    ctx.fillStyle = "#bdc3c7";
+    ctx.fillRect(0, floorY, 700, 40);
+    
+    // Grid markers
+    ctx.fillStyle = "rgba(0,0,0,0.2)";
+    for (let i = 0; i <= 15; i++) {
+        ctx.fillRect(startX + i * pxPerM, floorY, 2, 10);
+        if (i % 5 === 0) {
+            ctx.font = "10px sans-serif";
+            ctx.fillText(i + "m", startX + i * pxPerM - 5, floorY + 25);
+        }
+    }
+    
+    // Calculate positions
+    let currentPx = startX + state.x * pxPerM;
+    let targetPx = startX + state.dTarget * pxPerM;
+    
+    // Draw Block
+    let boxW = 40 + state.m; // Visual scaling
+    let boxH = 40 + state.m * 0.5;
+    
+    ctx.fillStyle = "#3498db";
+    ctx.fillRect(currentPx, floorY - boxH, boxW, boxH);
+    ctx.strokeStyle = "#2980b9";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(currentPx, floorY - boxH, boxW, boxH);
+    
+    // Draw Pusher Vector (Force)
+    if (state.x < state.dTarget) {
+        ctx.strokeStyle = "#c0392b";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(currentPx - 40, floorY - boxH / 2);
+        ctx.lineTo(currentPx, floorY - boxH / 2);
+        ctx.stroke();
+        
+        ctx.fillStyle = "#c0392b";
+        ctx.beginPath();
+        ctx.moveTo(currentPx, floorY - boxH / 2);
+        ctx.lineTo(currentPx - 10, floorY - boxH / 2 - 8);
+        ctx.lineTo(currentPx - 10, floorY - boxH / 2 + 8);
+        ctx.fill();
+        
+        ctx.font = "bold 14px sans-serif";
+        ctx.fillText(state.fApp.toFixed(0) + " N", currentPx - 40, floorY - boxH / 2 - 10);
+    }
+    
+    // HUD - Velocity
+    ctx.fillStyle = "#2c3e50";
+    ctx.font = "bold 16px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(`Velocity: ${state.v.toFixed(2)} m/s`, 20, 30);
+    
+    // ==========================================
+    // LAYER FIX: Draw Distance Dimensions LAST
+    // ==========================================
+    
+    // Vertical dashed lines for start and target
+    ctx.strokeStyle = "#8e44ad";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    
+    ctx.beginPath();
+    ctx.moveTo(startX, floorY);
+    ctx.lineTo(startX, floorY - boxH - 40);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(targetPx, floorY);
+    ctx.lineTo(targetPx, floorY - boxH - 40);
+    ctx.stroke();
+    
+    // Horizontal distance arrow
+    let dY = floorY - boxH - 30; // Positioned well above the block
     ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(startX, dY);
+    ctx.lineTo(targetPx, dY);
+    ctx.stroke();
     
-    // Brake Line (Red)
-    ctx.strokeStyle = "#e74c3c"; ctx.lineWidth=4;
-    ctx.beginPath(); ctx.moveTo(brakeLineX, roadY); ctx.lineTo(brakeLineX, roadY+100); ctx.stroke();
-    ctx.fillStyle = "#e74c3c"; ctx.font = "bold 12px sans-serif";
-    ctx.fillText("BRAKE LINE", brakeLineX - 35, roadY - 10);
+    // Draw background pill for text so it never gets obscured
+    let midX = startX + (targetPx - startX) / 2;
+    let dText = `d = ${state.dTarget.toFixed(1)} m`;
+    ctx.font = "bold 14px 'Times New Roman', serif";
+    let textW = ctx.measureText(dText).width;
     
-    // Target Line (For Level 3) - Say at +90m past brake line (190m total)
-    if(state.mode === 'guided' && state.level === 2) {
-        let targetDist = 90; 
-        let targetX = brakeLineX + targetDist * scale;
-        
-        ctx.fillStyle = "rgba(46, 204, 113, 0.3)";
-        ctx.fillRect(targetX - 10, roadY, 20, 100); // Tolerance zone
-        
-        ctx.strokeStyle = "#2ecc71"; ctx.lineWidth=2;
-        ctx.beginPath(); ctx.moveTo(targetX, roadY); ctx.lineTo(targetX, roadY+100); ctx.stroke();
-        ctx.fillStyle = "#2ecc71"; ctx.fillText("TARGET (90m)", targetX - 35, roadY - 10);
-    }
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+    ctx.fillRect(midX - textW / 2 - 10, dY - 10, textW + 20, 20);
+    ctx.strokeStyle = "#8e44ad";
+    ctx.strokeRect(midX - textW / 2 - 10, dY - 10, textW + 20, 20);
     
-    // Sled Position
-    let sledX = startX + state.x * scale;
-    // Camera Pan: Keep sled in view if it goes off screen
-    let camOffset = 0;
-    if(sledX > 500) {
-        camOffset = sledX - 500;
-    }
+    // Draw Distance Text
+    ctx.fillStyle = "#8e44ad";
+    ctx.textAlign = "center";
+    ctx.fillText(dText, midX, dY + 5);
+
+    // ==========================================
+    // BOTTOM GRAPH PANEL (Energy vs Position)
+    // ==========================================
+    let panelY = 360;
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, panelY, 700, 280);
+    
+    ctx.strokeStyle = "#ccc";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, panelY);
+    ctx.lineTo(700, panelY);
+    ctx.stroke();
+    
+    // Dynamic Graph Max Range Calculation
+    let dynamicXMax = Math.max(state.dTarget * 1.2, 10.0); 
+    let dynamicKMax = Math.max(100, Math.ceil(state.workTotal / 100) * 100); // Round up to nearest 100
+    
+    drawMiniGraph_3_1(60, panelY + 20, 600, 200, state.history, dynamicXMax, dynamicKMax);
+}
+
+function drawMiniGraph_3_1(x, y, w, h, data, xMax, kMax) {
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 1;
+    
+    // Axes Boundary
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y + h);
+    ctx.lineTo(x + w, y + h);
+    ctx.stroke();
+    
+    // Labels
+    ctx.fillStyle = "#333";
+    ctx.textAlign = "center";
+    ctx.font = "12px sans-serif";
     
     ctx.save();
-    ctx.translate(-camOffset, 0);
-    
-    // Redraw fixed elements that need to scroll?
-    // Actually, simple scrolling:
-    // We should have drawn the road *after* translating, or cleared and redrawn.
-    // Let's re-draw road logic simply with offset.
-    // For efficiency in this code block, I'll just draw the sled relative to the static road
-    // and let it go off screen? No, stopping distance can be large (200m+).
-    // Let's implement a simple "follow" cam by re-clearing.
-    
-    // RE-CLEAR & DRAW SCROLLED WORLD
-    ctx.restore(); // Undo prev
-    ctx.clearRect(0,0,700,640);
-    ctx.save();
-    ctx.translate(-camOffset, 0);
-    
-    // Road (Infinite look)
-    ctx.fillStyle = "#34495e"; ctx.fillRect(camOffset, roadY, 700, 100); 
-    // Draw Brake Line again relative to world
-    ctx.strokeStyle = "#e74c3c"; ctx.lineWidth=4;
-    ctx.beginPath(); ctx.moveTo(brakeLineX, roadY); ctx.lineTo(brakeLineX, roadY+100); ctx.stroke();
-    ctx.fillStyle = "#e74c3c"; ctx.font = "bold 12px sans-serif";
-    ctx.fillText("BRAKE LINE", brakeLineX - 35, roadY - 10);
-    
-    // Target Line again
-    if(state.mode === 'guided' && state.level === 2) {
-        let targetDist = 90; 
-        let targetX = brakeLineX + targetDist * scale;
-        ctx.fillStyle = "rgba(46, 204, 113, 0.3)";
-        ctx.fillRect(targetX - 10, roadY, 20, 100);
-        ctx.strokeStyle = "#2ecc71"; ctx.lineWidth=2;
-        ctx.beginPath(); ctx.moveTo(targetX, roadY); ctx.lineTo(targetX, roadY+100); ctx.stroke();
-        ctx.fillStyle = "#2ecc71"; ctx.fillText("TARGET", targetX - 20, roadY - 10);
-    }
-    
-    // Ticks on road
-    ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.font = "10px sans-serif";
-    for(let i=0; i<500; i+=10) { // Every 10m
-        let tx = startX + i*scale;
-        ctx.fillRect(tx, roadY+50, 2, 10);
-        if(i%50===0) ctx.fillText(i+"m", tx-5, roadY+75);
-    }
-    
-    // Skid Marks
-    if(state.x > 100) {
-        ctx.fillStyle = "rgba(0,0,0,0.3)";
-        let skidLen = (state.x - 100) * scale;
-        ctx.fillRect(brakeLineX, roadY+30, skidLen, 10);
-        ctx.fillRect(brakeLineX, roadY+60, skidLen, 10);
-        
-        // Distance Text
-        let dist = state.x - 100;
-        ctx.fillStyle = "white"; ctx.font = "bold 14px monospace";
-        ctx.fillText("d = " + dist.toFixed(1) + "m", brakeLineX + skidLen/2 - 30, roadY + 45);
-    }
-    
-    // Sled
-    let sledW = 60; let sledH = 30;
-    ctx.fillStyle = "#e67e22"; ctx.fillRect(sledX, roadY+20, sledW, sledH);
-    // Ski/Wheels
-    ctx.fillStyle = "#d35400"; ctx.fillRect(sledX, roadY+50, sledW, 5);
-    
-    // Velocity Vector
-    if(state.currentV > 0.1) {
-        let vLen = state.currentV * 5;
-        ctx.strokeStyle = "#2ecc71"; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(sledX + sledW/2, roadY+10); 
-        ctx.lineTo(sledX + sledW/2 + vLen, roadY+10); ctx.stroke();
-        // Arrow
-        ctx.beginPath(); ctx.moveTo(sledX + sledW/2 + vLen, roadY+10);
-        ctx.lineTo(sledX + sledW/2 + vLen - 5, roadY+5);
-        ctx.lineTo(sledX + sledW/2 + vLen - 5, roadY+15); ctx.fill();
-    }
-    
+    ctx.translate(x - 45, y + h / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText("Kinetic Energy (J)", 0, 0);
     ctx.restore();
     
-    // === HUD (Fixed on screen) ===
-    // Energy Bar
-    let barW = 300; let barH = 20; let barX = 350; let barY = 50;
+    ctx.fillText("Position (m)", x + w / 2, y + h + 35);
     
-    // Max Energy Reference (for scaling)
-    let maxK = 0.5 * 2000 * 30 * 30; // ~900 kJ
-    // Current K
-    let curK = 0.5 * state.m * state.currentV * state.currentV;
+    // Axis values
+    ctx.textAlign = "right";
+    ctx.fillText(kMax.toFixed(0), x - 5, y + 10);
+    ctx.fillText("0", x - 5, y + h);
+    ctx.fillText(xMax.toFixed(1) + " m", x + w + 15, y + h + 15);
     
-    // Background
-    ctx.fillStyle = "#bdc3c7"; ctx.fillRect(barX, barY, barW, barH);
-    // Fill
-    let fillW = (curK / maxK) * barW;
-    ctx.fillStyle = "#f1c40f"; ctx.fillRect(barX, barY, fillW, barH);
-    // Border
-    ctx.strokeStyle = "#7f8c8d"; ctx.strokeRect(barX, barY, barW, barH);
-    
-    ctx.fillStyle = "#333"; ctx.font = "bold 14px sans-serif";
-    ctx.fillText("Kinetic Energy", barX, barY - 8);
-    ctx.fillText((curK/1000).toFixed(1) + " kJ", barX + barW + 10, barY + 15);
+    if (data.length > 0) {
+        let pxPerK = h / kMax;
+        
+        ctx.beginPath();
+        ctx.strokeStyle = "#27ae60";
+        ctx.lineWidth = 3;
+        
+        for (let i = 0; i < data.length; i++) {
+            let p = data[i];
+            
+            let px = x + (p.x / xMax) * w;
+            let py = (y + h) - (p.k * pxPerK);
+            
+            if (i === 0) {
+                ctx.moveTo(px, py);
+            } else {
+                ctx.lineTo(px, py);
+            }
+        }
+        ctx.stroke();
+    }
 }
 
 function renderQuestions_3_1() {
     let div = document.getElementById('u3-1-questions');
     const v = (text) => `<i class="var">${text}</i>`;
 
-    if(state.level === 0) {
+    if (state.level === 0) {
         div.innerHTML = `
-            <h4 style="margin:0 0 10px 0; color:#2980b9;">Level 1: Calculation</h4>
-            <p>Set Mass ${v('m')} = <b>1000 kg</b>.</p>
-            <p>Set Velocity ${v('v')} = <b>20 m/s</b>.</p>
-            <p>Calculate the Kinetic Energy in <b>kJ</b> (Kilojoules).</p>
+            <h4 style="margin:0 0 10px 0; color:#2980b9;">Level 1: Doing Work</h4>
+            <p>Set Mass ${v('m')} = <b>10.0 kg</b>.</p>
+            <p>Set Applied Force ${v('F')} = <b>50 N</b> and Distance ${v('d')} = <b>8.0 m</b>.</p>
+            <p>Calculate the total Work (${v('W')}) done on the block.</p>
             <div style="margin-top:10px;">
-                <input type="number" id="ans-1" placeholder="kJ" style="width:80px; padding:4px;" 
+                <input type="number" id="ans-1" placeholder="Joules" style="width:100px; padding:4px;" 
                        onkeypress="if(event.key==='Enter') checkAnswer_3_1(0)"> 
                 <button onclick="checkAnswer_3_1(0)" style="cursor:pointer; padding:4px 8px;">Check</button>
             </div>
             <div id="fb-0"></div>
         `;
-    } else if(state.level === 1) {
+    } else if (state.level === 1) {
         div.innerHTML = `
-            <h4 style="margin:0 0 10px 0; color:#c0392b;">Level 2: The Squared Law</h4>
-            <p>At <b>10 m/s</b>, the sled slides <b>10 meters</b>.</p>
-            <p>If you double the speed to <b>20 m/s</b>, how far will it slide?</p>
-            <p style="font-size:0.9em; color:#666;">(Hint: Energy &prop; v²)</p>
+            <h4 style="margin:0 0 10px 0; color:#c0392b;">Level 2: The Energy Transfer</h4>
+            <p>Mass is <b>20.0 kg</b>. Force is <b>100 N</b>.</p>
+            <p>Target Distance is <b>5.0 m</b>.</p>
+            <p>Calculate the block's Kinetic Energy (${v('K')}) exactly as it crosses the 5.0m line.</p>
+            <p style="font-size:0.85em; color:#666;">(Hint: The Work-Energy Theorem saves a lot of math here!)</p>
             <div style="margin-top:10px;">
-                <input type="number" id="ans-2" placeholder="meters" style="width:80px; padding:4px;" 
+                <input type="number" id="ans-2" placeholder="Joules" style="width:100px; padding:4px;" 
                        onkeypress="if(event.key==='Enter') checkAnswer_3_1(1)"> 
                 <button onclick="checkAnswer_3_1(1)" style="cursor:pointer; padding:4px 8px;">Check</button>
             </div>
             <div id="fb-1"></div>
         `;
-    } else if(state.level === 2) {
+    } else if (state.level === 2) {
         div.innerHTML = `
-            <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 3: Precision Parking</h4>
-            <p>The Target Line is at <b>90 meters</b> past the brake line.</p>
-            <p>Mass is locked at <b>1500 kg</b>.</p>
-            <p>Adjust ${v('v')} to make the sled stop exactly on the target.</p>
-            <div style="margin-top:10px;">
-                <button onclick="checkAnswer_3_1(2)" style="padding:5px 15px; cursor:pointer;">I stopped on the line!</button>
-            </div>
-            <div id="fb-2"></div>
+            <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 3: Target Velocity</h4>
+            <p>The runway is locked at <b>10.0 m</b>.</p>
+            <p>You need the block to have exactly <b>800 Joules</b> of Kinetic Energy when it crosses the line.</p>
+            <p>Adjust the Mass and Force sliders, then push the block to prove your setup!</p>
+            <div id="fb-2" style="margin-top:10px; font-weight:bold;">Waiting for run...</div>
         `;
     } else {
         div.innerHTML = `
-            <h3 style="color:#f39c12; margin:0;">&#9733; ENERGY EXPERT &#9733;</h3>
-            <p>You understand the power of v²!</p>
+            <h3 style="color:#f39c12; margin:0;">&#9733; KINETIC CRUISER &#9733;</h3>
+            <p>You have mastered Work and Kinetic Energy!</p>
         `;
     }
 }
 
 function checkAnswer_3_1(lvl) {
     let correct = false;
-    let fb = document.getElementById('fb-'+lvl);
-    const v = (text) => `<i class="var">${text}</i>`;
-
-    if(lvl === 0) {
+    let fb = document.getElementById('fb-' + lvl);
+    
+    if (lvl === 0) {
         let val = parseFloat(document.getElementById('ans-1').value);
-        // K = 0.5 * 1000 * 400 = 200,000 J = 200 kJ
-        if(state.m === 1000 && state.v === 20 && Math.abs(val - 200) < 5) correct = true;
-        else if (state.v !== 20 || state.m !== 1000) {
-            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Set sliders to m=1000, v=20 first!</span>`;
-            return;
-        }
-    }
-    else if(lvl === 1) {
-        let val = parseFloat(document.getElementById('ans-2').value);
-        // Double speed -> Quadruple energy -> Quadruple distance.
-        // 10m * 4 = 40m.
-        if(Math.abs(val - 40) < 1.0) correct = true;
-    }
-    else if(lvl === 2) {
-        // Target dist = 90m.
-        // F = 5000. Work = 5000 * 90 = 450,000 J.
-        // K = 0.5 * 1500 * v^2 = 450,000
-        // v^2 = 900,000 / 1500 = 600.
-        // v = sqrt(600) = 24.49 m/s.
-        // Slider is integer. 24 -> 576 -> d=86.4. 25 -> 625 -> d=93.75.
-        // Wait, slider step is 1. We can't hit 90m exactly with integer v.
-        // Let's check if they are CLOSE (within the green zone drawn).
-        // Zone drawn is +/- 10m? No, drawing was targetX-10 width 20. So +/- 10m.
-        // 24 m/s => 86.4m (Error -3.6m). Inside zone.
-        // 25 m/s => 93.75m (Error +3.75m). Inside zone.
-        
-        let dist = state.x - 100; // Skid distance
-        if(state.stopped && Math.abs(dist - 90) < 5.0) { // 5m tolerance
+        // W = F*d = 50 * 8 = 400 J.
+        if (state.m === 10.0 && state.fApp === 50 && state.dTarget === 8.0 && Math.abs(val - 400.0) < 1.0) {
             correct = true;
-        } else if (!state.stopped) {
-            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Run the simulation until it stops!</span>`;
-            return;
+        } else if (state.fApp !== 50 || state.dTarget !== 8.0) {
+             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Set sliders to prompt values first!</span>`;
+             return;
+        }
+    } else if (lvl === 1) {
+        let val = parseFloat(document.getElementById('ans-2').value);
+        // K = W = F*d = 100 * 5 = 500 J.
+        if (state.m === 20.0 && state.fApp === 100 && state.dTarget === 5.0 && Math.abs(val - 500.0) < 1.0) {
+            correct = true;
+        } else if (state.fApp !== 100 || state.dTarget !== 5.0) {
+             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Ensure Force is 100 and Distance is 5.0!</span>`;
+             return;
         }
     }
 
-    if(correct) {
+    if (correct) {
         fb.innerHTML = "<span style='color:green; font-weight:bold;'>Correct! Unlocking next step...</span>";
         setTimeout(() => {
             state.level++;
             saveProgress('3.1', state.level);
-            
-            if(state.level >= 3) document.getElementById('u3-1-badge').style.display = 'block';
+            if (state.level >= 3) {
+                document.getElementById('u3-1-badge').style.display = 'block';
+            }
             renderQuestions_3_1();
             reset_3_1();
         }, 1500);
-    } else {
-        fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Incorrect. Try again.</span>`;
+    } else if (!correct && val) {
+        fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Incorrect. Check your math!</span>`;
     }
 }
 
+// AUTOMATIC EVALUATION OF LEVEL 3 WHEN THE BLOCK PASSES THE LINE
 function checkLevel_3_1() {
+    if (state.mode === 'guided' && state.level === 2) {
+        let fb = document.getElementById('fb-2');
+        
+        // Target K is 800 J. Did W = F*d = 800? 
+        // Distance is locked at 10m. So F must be 80N. Mass doesn't actually matter for K in this case!
+        if (Math.abs(state.workTotal - 800.0) < 5.0) { 
+            fb.innerHTML = "<span style='color:green;'>Perfect! The block crossed the line with exactly 800 Joules! Unlocking mastery...</span>";
+            setTimeout(() => {
+                state.level++;
+                saveProgress('3.1', state.level);
+                document.getElementById('u3-1-badge').style.display = 'block';
+                renderQuestions_3_1();
+                reset_3_1();
+            }, 2000);
+        } else {
+            fb.innerHTML = `<span style='color:#c0392b;'>Missed! The block had ${state.workTotal.toFixed(0)} J of energy. Adjust Force and try again.</span>`;
+        }
+    }
 }
 
 // ===============================================
