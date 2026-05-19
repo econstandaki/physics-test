@@ -10757,8 +10757,10 @@ function renderQuestions_4_2() {
     if (state.level === 0) {
         div.innerHTML = `
             <h4 style="margin:0 0 10px 0; color:#2980b9;">Level 1: Launch Impulse</h4>
-            <p>Cart starts at rest (${v('m')} = 10 kg).</p>
-            <p>Apply Force ${v('F')} = <b>50 N</b> for ${v('&Delta;t')} = <b>3.0 s</b>.</p>
+            <p>Cart starts at rest.</p>
+            <p style="margin: 5px 0;">${v('m')} = 10.0 kg</p>
+            <p>Apply Force for 3.0 s.</p>
+            <p style="margin: 5px 0;">${v('F')} = 50.0 N</p>
             <p>Calculate the final velocity ${v('v')}.</p>
             <div style="margin-top:10px;">
                 <input type="number" id="ans-1" placeholder="m/s" style="width:80px; padding:4px;" 
@@ -10770,8 +10772,10 @@ function renderQuestions_4_2() {
     } else if (state.level === 1) {
         div.innerHTML = `
             <h4 style="margin:0 0 10px 0; color:#c0392b;">Level 2: The Full Stop</h4>
-            <p>Cart is moving at <b>20 m/s</b> (${v('m')} = 10 kg).</p>
-            <p>You have a braking thruster of ${v('F')} = <b>-50 N</b>.</p>
+            <p>Cart is moving at 20 m/s.</p>
+            <p style="margin: 5px 0;">${v('m')} = 10.0 kg</p>
+            <p>You have a braking thruster of:</p>
+            <p style="margin: 5px 0;">${v('F')} = -50.0 N</p>
             <p>How long (${v('&Delta;t')}) must you burn to stop it exactly?</p>
             <div style="margin-top:10px;">
                 <input type="number" id="ans-2" placeholder="seconds" style="width:80px; padding:4px;" 
@@ -10783,7 +10787,8 @@ function renderQuestions_4_2() {
     } else if (state.level === 2) {
         div.innerHTML = `
             <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 3: Soft Landing</h4>
-            <p>Cart moving at <b>20 m/s</b> (${v('m')} = 10 kg).</p>
+            <p>Cart moving at 20 m/s.</p>
+            <p style="margin: 5px 0;">${v('m')} = 10.0 kg</p>
             <p>Stop the cart (${v('v<sub>f</sub>')} = 0) without exceeding magnitude <b>|40 N|</b> of force.</p>
             <p>Adjust ${v('F')} and ${v('&Delta;t')} to bring it to a stop.</p>
             <div style="margin-top:10px;">
