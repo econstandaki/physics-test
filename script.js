@@ -7413,27 +7413,42 @@ function loop_3_1() {
         let dt = 0.02;
         state.t += dt;
         
-        if (state.x < state.dTarget) {
-            state.v += state.a * dt;
+        // 1. Calculate Forces
+        let g = 9.8;
+        let f_net = 0;
+        
+        // If still in the push zone, apply F. Otherwise, just friction.
+        let f_applied = (state.x < state.dTarget) ? state.fApp : 0;
+        let f_fric = -state.mu * state.m * g; // Simple sliding friction
+        
+        // If block stops, friction can't pull it backward
+        if (state.v <= 0 && f_applied === 0) {
+            f_fric = 0;
+            state.v = 0;
         }
         
+        f_net = f_applied + f_fric;
+        
+        // 2. Physics Integration
+        let a = f_net / state.m;
+        state.v += a * dt;
         state.x += state.v * dt;
         
-        if (state.t * 60 % 3 < 1) { 
-            let currentK = 0.5 * state.m * (state.v * state.v);
-            state.history.push({
-                x: state.x, 
-                k: currentK
-            });
-        }
+        // 3. Energy Tracking
+        let workDone = f_applied * Math.min(state.x, state.dTarget);
+        let heatGenerated = Math.abs(f_fric) * state.x;
+        let currentK = (0.5 * state.m * state.v * state.v);
         
-        // Let it slide a little past the target distance to show conservation
-        if (state.x >= state.dTarget + 2.0 || state.x * 40 > 650) {
+        state.history.push({
+            x: state.x,
+            k: currentK,
+            eth: heatGenerated
+        });
+        
+        // 4. End Condition
+        if (state.v <= 0 && state.x >= state.dTarget) {
             state.running = false;
-            
-            if (state.mode === 'guided') {
-                checkLevel_3_1();
-            }
+            if (state.mode === 'guided') checkLevel_3_1();
             updateLocks_3_1();
         }
     }
@@ -7448,180 +7463,69 @@ function loop_3_1() {
 
 function draw_3_1() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
     let floorY = 280;
     let pxPerM = 40; 
     let startX = 50;
     
-    // Background Frame & Floor
-    ctx.fillStyle = "#ecf0f1";
-    ctx.fillRect(0, 0, 700, floorY);
+    // Floor
     ctx.fillStyle = "#bdc3c7";
     ctx.fillRect(0, floorY, 700, 40);
     
-    // Grid markers
-    ctx.fillStyle = "rgba(0,0,0,0.2)";
-    for (let i = 0; i <= 15; i++) {
-        ctx.fillRect(startX + i * pxPerM, floorY, 2, 10);
-        if (i % 5 === 0) {
-            ctx.font = "10px sans-serif";
-            ctx.fillText(i + "m", startX + i * pxPerM - 5, floorY + 25);
-        }
-    }
-    
-    // Calculate positions
-    let currentPx = startX + state.x * pxPerM;
-    let targetPx = startX + state.dTarget * pxPerM;
-    
-    // Draw Block
-    let boxW = 40 + state.m; // Visual scaling
-    let boxH = 40 + state.m * 0.5;
-    
+    // Cart
+    let cx = startX + state.x * pxPerM;
+    let boxSize = 40 + (state.m * 0.1);
     ctx.fillStyle = "#3498db";
-    ctx.fillRect(currentPx, floorY - boxH, boxW, boxH);
-    ctx.strokeStyle = "#2980b9";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(currentPx, floorY - boxH, boxW, boxH);
+    ctx.fillRect(cx, floorY - boxSize, boxSize, boxSize);
     
-    // Draw Pusher Vector (Force)
-    if (state.x < state.dTarget) {
-        ctx.strokeStyle = "#c0392b";
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(currentPx - 40, floorY - boxH / 2);
-        ctx.lineTo(currentPx, floorY - boxH / 2);
-        ctx.stroke();
-        
-        ctx.fillStyle = "#c0392b";
-        ctx.beginPath();
-        ctx.moveTo(currentPx, floorY - boxH / 2);
-        ctx.lineTo(currentPx - 10, floorY - boxH / 2 - 8);
-        ctx.lineTo(currentPx - 10, floorY - boxH / 2 + 8);
-        ctx.fill();
-        
-        ctx.font = "bold 14px sans-serif";
-        ctx.fillText(state.fApp.toFixed(0) + " N", currentPx - 40, floorY - boxH / 2 - 10);
-    }
-    
-    // HUD - Velocity
-    ctx.fillStyle = "#2c3e50";
-    ctx.font = "bold 16px sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText(`Velocity: ${state.v.toFixed(2)} m/s`, 20, 30);
-    
-    // ==========================================
-    // LAYER FIX: Draw Distance Dimensions LAST
-    // ==========================================
-    
-    // Vertical dashed lines for start and target
+    // Distance Marker
+    let targetPx = startX + state.dTarget * pxPerM;
     ctx.strokeStyle = "#8e44ad";
     ctx.lineWidth = 2;
     ctx.setLineDash([5, 5]);
-    
-    ctx.beginPath();
-    ctx.moveTo(startX, floorY);
-    ctx.lineTo(startX, floorY - boxH - 40);
-    ctx.stroke();
-    
-    ctx.beginPath();
-    ctx.moveTo(targetPx, floorY);
-    ctx.lineTo(targetPx, floorY - boxH - 40);
-    ctx.stroke();
-    
-    // Horizontal distance arrow
-    let dY = floorY - boxH - 30; // Positioned well above the block
+    ctx.beginPath(); ctx.moveTo(targetPx, floorY - 100); ctx.lineTo(targetPx, floorY + 40); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.beginPath();
-    ctx.moveTo(startX, dY);
-    ctx.lineTo(targetPx, dY);
-    ctx.stroke();
-    
-    // Draw background pill for text so it never gets obscured
-    let midX = startX + (targetPx - startX) / 2;
-    let dText = `d = ${state.dTarget.toFixed(1)} m`;
-    ctx.font = "bold 14px 'Times New Roman', serif";
-    let textW = ctx.measureText(dText).width;
-    
-    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-    ctx.fillRect(midX - textW / 2 - 10, dY - 10, textW + 20, 20);
-    ctx.strokeStyle = "#8e44ad";
-    ctx.strokeRect(midX - textW / 2 - 10, dY - 10, textW + 20, 20);
-    
-    // Draw Distance Text
     ctx.fillStyle = "#8e44ad";
-    ctx.textAlign = "center";
-    ctx.fillText(dText, midX, dY + 5);
-
-    // ==========================================
-    // BOTTOM GRAPH PANEL (Energy vs Position)
-    // ==========================================
+    ctx.fillText("d = " + state.dTarget + "m", targetPx + 5, floorY - 80);
+    
+    // Bottom Graph Panel
     let panelY = 360;
     ctx.fillStyle = "white";
     ctx.fillRect(0, panelY, 700, 280);
-    
-    ctx.strokeStyle = "#ccc";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, panelY);
-    ctx.lineTo(700, panelY);
-    ctx.stroke();
-    
-    // Dynamic Graph Max Range Calculation
-    let dynamicXMax = Math.max(state.dTarget * 1.2, 10.0); 
-    let dynamicKMax = Math.max(100, Math.ceil(state.workTotal / 100) * 100); // Round up to nearest 100
-    
-    drawMiniGraph_3_1(60, panelY + 20, 600, 200, state.history, dynamicXMax, dynamicKMax);
+    drawMiniGraph_3_1(80, panelY + 20, 550, 200, state.history);
 }
 
-function drawMiniGraph_3_1(x, y, w, h, data, xMax, kMax) {
+function drawMiniGraph_3_1(x, y, w, h, data) {
+    let kMax = 1000; // Auto-scale could be added, but fixed is safe for intro
+    let pxPerE = h / kMax;
+    
+    // Axes
     ctx.strokeStyle = "#333";
-    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + h); ctx.lineTo(x + w, y + h); ctx.stroke();
+    ctx.fillText("Energy (J)", x - 40, y - 10);
+    ctx.fillText("Position (m)", x + w / 2, y + h + 30);
     
-    // Axes Boundary
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x, y + h);
-    ctx.lineTo(x + w, y + h);
-    ctx.stroke();
-    
-    // Labels
-    ctx.fillStyle = "#333";
-    ctx.textAlign = "center";
-    ctx.font = "12px sans-serif";
-    
-    ctx.save();
-    ctx.translate(x - 45, y + h / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText("Kinetic Energy (J)", 0, 0);
-    ctx.restore();
-    
-    ctx.fillText("Position (m)", x + w / 2, y + h + 35);
-    
-    // Axis values
-    ctx.textAlign = "right";
-    ctx.fillText(kMax.toFixed(0), x - 5, y + 10);
-    ctx.fillText("0", x - 5, y + h);
-    ctx.fillText(xMax.toFixed(1) + " m", x + w + 15, y + h + 15);
+    // Legend
+    ctx.fillStyle = "#27ae60"; ctx.fillRect(x + w + 10, y, 10, 10); ctx.fillText("Kinetic", x + w + 45, y + 10);
+    ctx.fillStyle = "#c0392b"; ctx.fillRect(x + w + 10, y + 20, 10, 10); ctx.fillText("Thermal", x + w + 45, y + 30);
     
     if (data.length > 0) {
-        let pxPerK = h / kMax;
-        
-        ctx.beginPath();
-        ctx.strokeStyle = "#27ae60";
         ctx.lineWidth = 3;
+        // Kinetic Line
+        ctx.beginPath(); ctx.strokeStyle = "#27ae60";
+        data.forEach((p, i) => {
+            let px = x + (p.x / 15) * w;
+            let py = (y + h) - (p.k * pxPerE);
+            i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        });
+        ctx.stroke();
         
-        for (let i = 0; i < data.length; i++) {
-            let p = data[i];
-            
-            let px = x + (p.x / xMax) * w;
-            let py = (y + h) - (p.k * pxPerK);
-            
-            if (i === 0) {
-                ctx.moveTo(px, py);
-            } else {
-                ctx.lineTo(px, py);
-            }
-        }
+        // Thermal Line
+        ctx.beginPath(); ctx.strokeStyle = "#c0392b";
+        data.forEach((p, i) => {
+            let px = x + (p.x / 15) * w;
+            let py = (y + h) - (p.eth * pxPerE);
+            i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        });
         ctx.stroke();
     }
 }
