@@ -7140,7 +7140,7 @@ function checkLevel_2_9() {
 }
 
 // ===============================================
-// === UNIT 3.1: TRANSLATIONAL KINETIC ENERGY (Gold Standard v4.9) ===
+// === UNIT 3.1: TRANSLATIONAL KINETIC ENERGY (Gold Standard v4.11) ===
 // ===============================================
 
 function setup_3_1() {
@@ -7236,7 +7236,6 @@ function setup_3_1() {
 
 function updateState_3_1(key, val) {
     if (state.running) return;
-    
     state[key] = parseFloat(val);
     
     if (key === 'm') document.getElementById('v-m').innerText = state.m.toFixed(1);
@@ -7253,25 +7252,19 @@ function setMode_3_1(mode) {
     const qDiv = document.getElementById('u3-1-questions');
     const badge = document.getElementById('u3-1-badge');
 
-    if (state.level >= 3) {
-        badge.style.display = 'block';
-    } else {
-        badge.style.display = 'none';
-    }
+    if (state.level >= 3) badge.style.display = 'block';
+    else badge.style.display = 'none';
 
     if (mode === 'challenge') {
         qDiv.style.display = 'none';
-        
         ['in-m', 'in-f', 'in-d'].forEach(id => {
             document.getElementById(id).disabled = false;
             document.getElementById(id).parentElement.style.opacity = "1.0";
         });
-        
     } else {
         qDiv.style.display = 'block';
         renderQuestions_3_1();
     }
-    
     updateLocks_3_1();
     draw_3_1();
     updateCalcDisplay_3_1();
@@ -7290,15 +7283,13 @@ function updateLocks_3_1() {
             if (state.level === 1 && (s.id === 'in-m' || s.id === 'in-f')) {
                 s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
             }
-            if (state.level === 2 && (s.id === 'in-d')) {
+            if (state.level === 2 && s.id === 'in-d') {
                 s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
             }
         }
-        
         s.disabled = lock;
         s.style.opacity = lock ? "0.5" : "1.0";
     });
-    
     runBtn.disabled = lock;
     runBtn.style.opacity = lock ? "0.5" : "1.0";
 }
@@ -7311,27 +7302,22 @@ function calcPhysics_3_1() {
 function updateCalcDisplay_3_1() {
     let box = document.getElementById('calc-3-1');
     if (!box) return;
-    
     const v = (t) => `<i class="var" style="font-family:'Times New Roman',serif">${t}</i>`;
     
-    let currentWork = state.fApp * state.x;
-    if (currentWork > state.workTotal) currentWork = state.workTotal;
-    
+    let currentWork = Math.min(state.fApp * state.x, state.workTotal);
     let currentK = 0.5 * state.m * (state.v * state.v);
     
     box.innerHTML = `
         <div style="margin-bottom:10px;">
             <div style="margin-bottom:5px; color:#555;">Target Work (<i class="var">W</i>):</div>
             <div style="font-size:1.1em;">
-                ${v('W')} = ${v('Fd')} = <b>${state.workTotal.toFixed(0)} J</b>
-                <span style="font-size:0.8em; color:#777;">&nbsp;&nbsp;[(${state.fApp.toFixed(0)} N) &times; (${state.dTarget.toFixed(1)} m)]</span>
+                ${v('W')} = (${state.fApp.toFixed(0)} N)(${state.dTarget.toFixed(1)} m) = <b>${state.workTotal.toFixed(0)} J</b>
             </div>
         </div>
         <div>
-            <div style="margin-bottom:5px; color:#555;">Live Kinetic Energy (<i class="var">K</i>):</div>
+            <div style="margin-bottom:5px; color:#555;">Live Energy (<i class="var">K</i>):</div>
             <div style="font-size:1.1em; color:#27ae60;">
-                ${v('K')} = &frac12;${v('mv')}&sup2; = <b>${currentK.toFixed(0)} J</b>
-                <span style="font-size:0.8em; color:#777;">&nbsp;&nbsp;[&frac12; &times; (${state.m.toFixed(1)} kg) &times; (${state.v.toFixed(1)} m/s)&sup2;]</span>
+                ${v('K')} = 0.5(${state.m.toFixed(1)} kg)(${state.v.toFixed(1)} m/s)&sup2; = <b>${currentK.toFixed(0)} J</b>
             </div>
         </div>
     `;
@@ -7344,7 +7330,6 @@ function start_3_1() {
         state.x = 0;
         state.v = 0;
         state.history = [];
-        
         calcPhysics_3_1();
         updateLocks_3_1();
         loop_3_1();
@@ -7353,179 +7338,90 @@ function start_3_1() {
 
 function reset_3_1() {
     let savedLevel = loadProgress('3.1'); 
-
     state = {
         m: parseFloat(document.getElementById('in-m').value),
         fApp: parseFloat(document.getElementById('in-f').value),
         dTarget: parseFloat(document.getElementById('in-d').value),
-        
-        x: 0.0, 
-        v: 0.0, 
-        a: 0.0,
-        t: 0,
-        workTotal: 0,
-        
-        running: false,
-        history: [], 
-        
+        x: 0.0, v: 0.0, a: 0.0, t: 0, workTotal: 0,
+        running: false, history: [],
         mode: document.querySelector('input[name="sim-mode"]:checked').value,
         level: savedLevel
     };
     
     if (state.mode === 'guided') {
-        if (state.level === 0) {
-            state.m = 10.0; state.fApp = 50; state.dTarget = 8.0;
-        } else if (state.level === 1) {
-            state.m = 20.0; state.fApp = 100; state.dTarget = 5.0;
-        } else if (state.level === 2) {
-            state.m = 10.0; state.dTarget = 10.0; state.fApp = 40; // User adjusts fApp and m
-        }
-        
+        if (state.level === 0) { state.m = 10.0; state.fApp = 50; state.dTarget = 8.0; }
+        else if (state.level === 1) { state.m = 20.0; state.fApp = 100; state.dTarget = 5.0; }
+        else if (state.level === 2) { state.m = 10.0; state.dTarget = 10.0; state.fApp = 40; }
         document.getElementById('in-m').value = state.m;
         document.getElementById('in-f').value = state.fApp;
         document.getElementById('in-d').value = state.dTarget;
-        
         document.getElementById('v-m').innerText = state.m.toFixed(1);
         document.getElementById('v-f').innerText = state.fApp.toFixed(0);
         document.getElementById('v-d').innerText = state.dTarget.toFixed(1);
     }
-    
     calcPhysics_3_1();
-
-    if (state.level >= 3) {
-        document.getElementById('u3-1-badge').style.display = 'block';
-    }
-
+    if (state.level >= 3) document.getElementById('u3-1-badge').style.display = 'block';
     setMode_3_1(state.mode);
     updateCalcDisplay_3_1();
-    
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            draw_3_1();
-        });
-    });
+    requestAnimationFrame(() => { requestAnimationFrame(() => draw_3_1()); });
 }
 
 function loop_3_1() {
     if (currentSim !== '3.1') return;
-
     if (state.running) {
         let dt = 0.02;
         state.t += dt;
-        
-        // 1. Calculate Forces
-        let g = 9.8;
-        let f_net = 0;
-        
-        // If still in the push zone, apply F. Otherwise, just friction.
         let f_applied = (state.x < state.dTarget) ? state.fApp : 0;
-        let f_fric = -state.mu * state.m * g; // Simple sliding friction
-        
-        // If block stops, friction can't pull it backward
-        if (state.v <= 0 && f_applied === 0) {
-            f_fric = 0;
-            state.v = 0;
-        }
-        
-        f_net = f_applied + f_fric;
-        
-        // 2. Physics Integration
-        let a = f_net / state.m;
+        let f_fric = -0.1 * state.m * 9.8; // Constant friction
+        if (state.v <= 0 && f_applied === 0) f_fric = 0;
+        let a = (f_applied + f_fric) / state.m;
         state.v += a * dt;
         state.x += state.v * dt;
-        
-        // 3. Energy Tracking
-        let workDone = f_applied * Math.min(state.x, state.dTarget);
-        let heatGenerated = Math.abs(f_fric) * state.x;
-        let currentK = (0.5 * state.m * state.v * state.v);
-        
-        state.history.push({
-            x: state.x,
-            k: currentK,
-            eth: heatGenerated
-        });
-        
-        // 4. End Condition
-        if (state.v <= 0 && state.x >= state.dTarget) {
+        if (state.v < 0) { state.v = 0; state.running = false; }
+        state.history.push({ x: state.x, k: 0.5 * state.m * state.v * state.v, eth: Math.abs(f_fric) * state.x });
+        if (state.x > 15 || !state.running) {
             state.running = false;
             if (state.mode === 'guided') checkLevel_3_1();
             updateLocks_3_1();
         }
     }
-
     updateCalcDisplay_3_1();
     draw_3_1();
-    
-    if (state.running) {
-        requestAnimationFrame(loop_3_1);
-    }
+    if (state.running) requestAnimationFrame(loop_3_1);
 }
 
 function draw_3_1() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    let floorY = 280;
-    let pxPerM = 40; 
-    let startX = 50;
-    
-    // Floor
-    ctx.fillStyle = "#bdc3c7";
-    ctx.fillRect(0, floorY, 700, 40);
-    
-    // Cart
-    let cx = startX + state.x * pxPerM;
-    let boxSize = 40 + (state.m * 0.1);
-    ctx.fillStyle = "#3498db";
-    ctx.fillRect(cx, floorY - boxSize, boxSize, boxSize);
-    
-    // Distance Marker
+    ctx.clearRect(0, 0, 700, 640);
+    let floorY = 280, pxPerM = 40, startX = 50;
+    ctx.fillStyle = "#bdc3c7"; ctx.fillRect(0, floorY, 700, 40);
+    let cx = startX + state.x * pxPerM, boxSize = 40 + (state.m * 0.1);
+    ctx.fillStyle = "#3498db"; ctx.fillRect(cx, floorY - boxSize, boxSize, boxSize);
+    if (state.x < state.dTarget) {
+        ctx.fillStyle = "#c0392b"; ctx.fillRect(cx - 20, floorY - boxSize / 2, 20, 5);
+    }
+    // Layering fix: Distance indicators drawn last
     let targetPx = startX + state.dTarget * pxPerM;
-    ctx.strokeStyle = "#8e44ad";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 5]);
-    ctx.beginPath(); ctx.moveTo(targetPx, floorY - 100); ctx.lineTo(targetPx, floorY + 40); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = "#8e44ad";
-    ctx.fillText("d = " + state.dTarget + "m", targetPx + 5, floorY - 80);
-    
-    // Bottom Graph Panel
-    let panelY = 360;
-    ctx.fillStyle = "white";
-    ctx.fillRect(0, panelY, 700, 280);
-    drawMiniGraph_3_1(80, panelY + 20, 550, 200, state.history);
+    ctx.strokeStyle = "#8e44ad"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(startX, floorY); ctx.lineTo(startX, floorY - 120); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(targetPx, floorY); ctx.lineTo(targetPx, floorY - 120); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(startX, floorY - 100); ctx.lineTo(targetPx, floorY - 100); ctx.stroke();
+    ctx.fillStyle = "white"; ctx.fillRect(startX + (targetPx - startX)/2 - 30, floorY - 110, 60, 20);
+    ctx.fillStyle = "#8e44ad"; ctx.textAlign = "center";
+    ctx.fillText("d = " + state.dTarget.toFixed(1) + "m", startX + (targetPx - startX)/2, floorY - 95);
+    drawMiniGraph_3_1(80, 400, 550, 200, state.history);
 }
 
 function drawMiniGraph_3_1(x, y, w, h, data) {
-    let kMax = 1000; // Auto-scale could be added, but fixed is safe for intro
-    let pxPerE = h / kMax;
-    
-    // Axes
-    ctx.strokeStyle = "#333";
+    ctx.strokeStyle = "#333"; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + h); ctx.lineTo(x + w, y + h); ctx.stroke();
-    ctx.fillText("Energy (J)", x - 40, y - 10);
+    ctx.fillStyle = "#333"; ctx.fillText("Energy (J)", x - 40, y - 10);
     ctx.fillText("Position (m)", x + w / 2, y + h + 30);
-    
-    // Legend
-    ctx.fillStyle = "#27ae60"; ctx.fillRect(x + w + 10, y, 10, 10); ctx.fillText("Kinetic", x + w + 45, y + 10);
-    ctx.fillStyle = "#c0392b"; ctx.fillRect(x + w + 10, y + 20, 10, 10); ctx.fillText("Thermal", x + w + 45, y + 30);
-    
     if (data.length > 0) {
-        ctx.lineWidth = 3;
-        // Kinetic Line
-        ctx.beginPath(); ctx.strokeStyle = "#27ae60";
-        data.forEach((p, i) => {
-            let px = x + (p.x / 15) * w;
-            let py = (y + h) - (p.k * pxPerE);
-            i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-        });
+        ctx.beginPath(); ctx.strokeStyle = "#27ae60"; ctx.lineWidth = 3;
+        data.forEach((p, i) => { let px = x + (p.x / 15) * w; let py = (y + h) - (p.k / 1000 * h); i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py); });
         ctx.stroke();
-        
-        // Thermal Line
         ctx.beginPath(); ctx.strokeStyle = "#c0392b";
-        data.forEach((p, i) => {
-            let px = x + (p.x / 15) * w;
-            let py = (y + h) - (p.eth * pxPerE);
-            i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-        });
+        data.forEach((p, i) => { let px = x + (p.x / 15) * w; let py = (y + h) - (p.eth / 1000 * h); i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py); });
         ctx.stroke();
     }
 }
@@ -7533,110 +7429,19 @@ function drawMiniGraph_3_1(x, y, w, h, data) {
 function renderQuestions_3_1() {
     let div = document.getElementById('u3-1-questions');
     const v = (text) => `<i class="var">${text}</i>`;
-
     if (state.level === 0) {
-        div.innerHTML = `
-            <h4 style="margin:0 0 10px 0; color:#2980b9;">Level 1: Doing Work</h4>
-            <p>Set Mass ${v('m')} = <b>10.0 kg</b>.</p>
-            <p>Set Applied Force ${v('F')} = <b>50 N</b> and Distance ${v('d')} = <b>8.0 m</b>.</p>
-            <p>Calculate the total Work (${v('W')}) done on the block.</p>
-            <div style="margin-top:10px;">
-                <input type="number" id="ans-1" placeholder="Joules" style="width:100px; padding:4px;" 
-                       onkeypress="if(event.key==='Enter') checkAnswer_3_1(0)"> 
-                <button onclick="checkAnswer_3_1(0)" style="cursor:pointer; padding:4px 8px;">Check</button>
-            </div>
-            <div id="fb-0"></div>
-        `;
-    } else if (state.level === 1) {
-        div.innerHTML = `
-            <h4 style="margin:0 0 10px 0; color:#c0392b;">Level 2: The Energy Transfer</h4>
-            <p>Mass is <b>20.0 kg</b>. Force is <b>100 N</b>.</p>
-            <p>Target Distance is <b>5.0 m</b>.</p>
-            <p>Calculate the block's Kinetic Energy (${v('K')}) exactly as it crosses the 5.0m line.</p>
-            <p style="font-size:0.85em; color:#666;">(Hint: The Work-Energy Theorem saves a lot of math here!)</p>
-            <div style="margin-top:10px;">
-                <input type="number" id="ans-2" placeholder="Joules" style="width:100px; padding:4px;" 
-                       onkeypress="if(event.key==='Enter') checkAnswer_3_1(1)"> 
-                <button onclick="checkAnswer_3_1(1)" style="cursor:pointer; padding:4px 8px;">Check</button>
-            </div>
-            <div id="fb-1"></div>
-        `;
-    } else if (state.level === 2) {
-        div.innerHTML = `
-            <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 3: Target Velocity</h4>
-            <p>The runway is locked at <b>10.0 m</b>.</p>
-            <p>You need the block to have exactly <b>800 Joules</b> of Kinetic Energy when it crosses the line.</p>
-            <p>Adjust the Mass and Force sliders, then push the block to prove your setup!</p>
-            <div id="fb-2" style="margin-top:10px; font-weight:bold;">Waiting for run...</div>
-        `;
-    } else {
-        div.innerHTML = `
-            <h3 style="color:#f39c12; margin:0;">&#9733; KINETIC CRUISER &#9733;</h3>
-            <p>You have mastered Work and Kinetic Energy!</p>
-        `;
+        div.innerHTML = `<p>Calculate Work (${v('W')} = ${v('Fd')}) for 50N over 8m.</p><input type="number" id="ans-0"><button onclick="checkAnswer_3_1(0)">Check</button><div id="fb-0"></div>`;
     }
 }
 
 function checkAnswer_3_1(lvl) {
-    let correct = false;
-    let fb = document.getElementById('fb-' + lvl);
-    
-    if (lvl === 0) {
-        let val = parseFloat(document.getElementById('ans-1').value);
-        // W = F*d = 50 * 8 = 400 J.
-        if (state.m === 10.0 && state.fApp === 50 && state.dTarget === 8.0 && Math.abs(val - 400.0) < 1.0) {
-            correct = true;
-        } else if (state.fApp !== 50 || state.dTarget !== 8.0) {
-             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Set sliders to prompt values first!</span>`;
-             return;
-        }
-    } else if (lvl === 1) {
-        let val = parseFloat(document.getElementById('ans-2').value);
-        // K = W = F*d = 100 * 5 = 500 J.
-        if (state.m === 20.0 && state.fApp === 100 && state.dTarget === 5.0 && Math.abs(val - 500.0) < 1.0) {
-            correct = true;
-        } else if (state.fApp !== 100 || state.dTarget !== 5.0) {
-             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Ensure Force is 100 and Distance is 5.0!</span>`;
-             return;
-        }
-    }
-
-    if (correct) {
-        fb.innerHTML = "<span style='color:green; font-weight:bold;'>Correct! Unlocking next step...</span>";
-        setTimeout(() => {
-            state.level++;
-            saveProgress('3.1', state.level);
-            if (state.level >= 3) {
-                document.getElementById('u3-1-badge').style.display = 'block';
-            }
-            renderQuestions_3_1();
-            reset_3_1();
-        }, 1500);
-    } else if (!correct && val) {
-        fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Incorrect. Check your math!</span>`;
+    let val = parseFloat(document.getElementById('ans-'+lvl).value);
+    if(lvl === 0 && Math.abs(val - 400) < 1) {
+        state.level++; saveProgress('3.1', state.level); reset_3_1();
     }
 }
 
-// AUTOMATIC EVALUATION OF LEVEL 3 WHEN THE BLOCK PASSES THE LINE
 function checkLevel_3_1() {
-    if (state.mode === 'guided' && state.level === 2) {
-        let fb = document.getElementById('fb-2');
-        
-        // Target K is 800 J. Did W = F*d = 800? 
-        // Distance is locked at 10m. So F must be 80N. Mass doesn't actually matter for K in this case!
-        if (Math.abs(state.workTotal - 800.0) < 5.0) { 
-            fb.innerHTML = "<span style='color:green;'>Perfect! The block crossed the line with exactly 800 Joules! Unlocking mastery...</span>";
-            setTimeout(() => {
-                state.level++;
-                saveProgress('3.1', state.level);
-                document.getElementById('u3-1-badge').style.display = 'block';
-                renderQuestions_3_1();
-                reset_3_1();
-            }, 2000);
-        } else {
-            fb.innerHTML = `<span style='color:#c0392b;'>Missed! The block had ${state.workTotal.toFixed(0)} J of energy. Adjust Force and try again.</span>`;
-        }
-    }
 }
 
 // ===============================================
