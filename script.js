@@ -10727,7 +10727,7 @@ function renderQuestions_4_2() {
         div.innerHTML = `
             <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 3: Soft Landing</h4>
             <p>Cart moving at <b>20 m/s</b> (${v('m')} = 10 kg).</p>
-            <p>Stop the cart ($v_f=0$) without exceeding magnitude <b>|40 N|</b> of force.</p>
+            <p>Stop the cart (${v('v<sub>f</sub>')} = 0) without exceeding magnitude <b>|40 N|</b> of force.</p>
             <p>Adjust ${v('F')} and ${v('&Delta;t')} to bring it to a stop.</p>
             <div style="margin-top:10px;">
                 <button onclick="checkAnswer_4_2(2)" style="padding:5px 15px; cursor:pointer;">I Stopped It!</button>
