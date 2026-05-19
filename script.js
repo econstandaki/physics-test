@@ -15290,3 +15290,577 @@ function checkLevel_6_1() {
         }
     }
 }
+
+// ===============================================
+// === UNIT 6.2: TORQUE & WORK (Gold Standard v4.9) ===
+// ===============================================
+
+function setup_6_2() {
+    canvas.width = 700; 
+    canvas.height = 640; 
+
+    document.getElementById('sim-title').innerText = "6.2 Torque & Work";
+    
+    document.getElementById('sim-desc').innerHTML = `
+        <h3 style="margin-top:0; margin-bottom:10px;">Rotational Work</h3>
+        <p style="margin-bottom:10px; line-height:1.4;">
+        Work is done when a Torque causes an object to rotate through an Angle. This work transforms into Rotational Kinetic Energy.
+        <br><b>Equations:</b> <i class="var">W</i> = <i class="var">&tau;&Delta;&theta;</i> &nbsp;|&nbsp; <i class="var">W</i> = &Delta;<i class="var">K<sub>rot</sub></i>
+        <br><i><b>Mission:</b> Drive the motor for a specific number of radians to perform the required work!</i></p>`;
+
+    document.getElementById('sim-controls').innerHTML = `
+        <div style="background:#eef2f3; padding:10px; border-radius:5px; margin-bottom:15px; border:1px solid #ccc; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; flex-direction:column; gap:5px;">
+                <label style="font-weight:bold; margin:0;">Mode:</label>
+                <div style="display:flex; gap:15px;">
+                    <label style="cursor:pointer; margin:0; display:flex; align-items:center;">
+                        <input type="radio" name="sim-mode" value="guided" checked onchange="setMode_6_2('guided')" style="margin-right:5px;"> Guided
+                    </label>
+                    <label style="cursor:pointer; margin:0; display:flex; align-items:center;">
+                        <input type="radio" name="sim-mode" value="challenge" onchange="setMode_6_2('challenge')" style="margin-right:5px;"> Full Version
+                    </label>
+                </div>
+            </div>
+            <div id="u6-2-badge" style="display:none; font-weight:bold; color:#f39c12; font-family:sans-serif; text-align:right;">
+                <span style="font-size:1.5em; vertical-align:middle;">&#9733;</span> MOTOR MECHANIC
+            </div>
+        </div>
+
+        <div id="calc-6-2" style="background:white; border:1px solid #2c3e50; border-radius:4px; padding:10px; margin-bottom:15px; font-family:'Times New Roman', serif; font-size:1.0em; line-height:1.6;">
+        </div>
+
+        <div class="control-group" style="border-left: 4px solid #c0392b; padding-left: 10px;">
+            <label style="color:#c0392b; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>Applied Torque (<i class="var">&tau;</i>):</span>
+                <span><span id="v-tau">50</span> N&middot;m</span>
+            </label>
+            <input type="range" id="in-tau" class="phys-slider" min="10" max="200" step="10" value="50" 
+                oninput="updateState_6_2('tauApp', this.value)">
+        </div>
+
+        <div class="control-group" style="border-left: 4px solid #2980b9; padding-left: 10px; margin-top:10px;">
+            <label style="color:#2980b9; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>Target Angle (<i class="var">&Delta;&theta;</i>):</span>
+                <span><span id="v-ang">10.0</span> rad</span>
+            </label>
+            <input type="range" id="in-ang" class="phys-slider" min="2.0" max="40.0" step="1.0" value="10.0" 
+                oninput="updateState_6_2('thetaTarget', this.value)">
+        </div>
+
+        <div class="control-group" style="border-left: 4px solid #8e44ad; padding-left: 10px; margin-top:10px;">
+            <label style="color:#8e44ad; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>Flywheel Inertia (<i class="var">I</i>):</span>
+                <span><span id="v-i">20.0</span> kg&middot;m&sup2;</span>
+            </label>
+            <input type="range" id="in-i" class="phys-slider" min="5.0" max="50.0" step="5.0" value="20.0" 
+                oninput="updateState_6_2('I', this.value)">
+        </div>
+
+        <div style="margin-top:15px; display:flex; gap:10px;">
+            <button class="btn btn-green" onclick="start_6_2()" id="btn-start">Apply Work</button>
+            <button class="btn btn-red" onclick="reset_6_2()">Reset</button>
+        </div>
+        
+        <div id="u6-2-questions" style="margin-top:20px; border-top:2px solid #eee; padding-top:15px; background:#fafafa; padding:15px; border-radius:5px;">
+        </div>
+    `;
+
+    const preventJump = (e) => {
+        const rect = e.target.getBoundingClientRect();
+        const min = parseFloat(e.target.min);
+        const max = parseFloat(e.target.max);
+        const val = parseFloat(e.target.value);
+        let clientX = e.clientX;
+        if (e.type === 'touchstart') clientX = e.touches[0].clientX;
+        const ratio = (val - min) / (max - min);
+        const clickX = clientX - rect.left;
+        const thumbX = ratio * rect.width;
+        if (Math.abs(clickX - thumbX) > 35) e.preventDefault();
+    };
+
+    document.querySelectorAll('.phys-slider').forEach(s => {
+        s.addEventListener('mousedown', preventJump);
+        s.addEventListener('touchstart', preventJump, {passive: false});
+    });
+
+    reset_6_2();
+}
+
+function updateState_6_2(key, val) {
+    if (state.running) return;
+    
+    state[key] = parseFloat(val);
+    
+    if (key === 'tauApp') document.getElementById('v-tau').innerText = state.tauApp.toFixed(0);
+    if (key === 'thetaTarget') document.getElementById('v-ang').innerText = state.thetaTarget.toFixed(1);
+    if (key === 'I') document.getElementById('v-i').innerText = state.I.toFixed(1);
+    
+    calcPhysics_6_2();
+    updateCalcDisplay_6_2();
+    draw_6_2();
+}
+
+function setMode_6_2(mode) {
+    state.mode = mode;
+    const qDiv = document.getElementById('u6-2-questions');
+    const badge = document.getElementById('u6-2-badge');
+
+    if (state.level >= 3) {
+        badge.style.display = 'block';
+    } else {
+        badge.style.display = 'none';
+    }
+
+    if (mode === 'challenge') {
+        qDiv.style.display = 'none';
+        
+        ['in-tau', 'in-ang', 'in-i'].forEach(id => {
+            document.getElementById(id).disabled = false;
+            document.getElementById(id).parentElement.style.opacity = "1.0";
+        });
+        
+    } else {
+        qDiv.style.display = 'block';
+        renderQuestions_6_2();
+    }
+    
+    updateLocks_6_2();
+    draw_6_2();
+    updateCalcDisplay_6_2();
+}
+
+function updateLocks_6_2() {
+    let sliders = document.querySelectorAll('.phys-slider');
+    let runBtn = document.getElementById('btn-start');
+    let lock = state.running;
+    
+    sliders.forEach(s => {
+        if (state.mode === 'guided') {
+            if (state.level === 0 && (s.id === 'in-tau' || s.id === 'in-ang' || s.id === 'in-i')) {
+                s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+            }
+            if (state.level === 1 && (s.id === 'in-tau' || s.id === 'in-ang' || s.id === 'in-i')) {
+                s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+            }
+            if (state.level === 2 && (s.id === 'in-tau' || s.id === 'in-i')) {
+                s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+            }
+        }
+        
+        s.disabled = lock;
+        s.style.opacity = lock ? "0.5" : "1.0";
+    });
+    
+    runBtn.disabled = lock;
+    runBtn.style.opacity = lock ? "0.5" : "1.0";
+}
+
+function calcPhysics_6_2() {
+    state.workTotal = state.tauApp * state.thetaTarget;
+    state.alpha = state.tauApp / state.I;
+}
+
+function updateCalcDisplay_6_2() {
+    let box = document.getElementById('calc-6-2');
+    if (!box) return;
+    
+    const v = (t) => `<i class="var" style="font-family:'Times New Roman',serif">${t}</i>`;
+    
+    let currentWork = state.running ? (state.tauApp * state.theta) : 0;
+    if (!state.running && state.theta >= state.thetaTarget) {
+        currentWork = state.workTotal;
+    }
+    
+    box.innerHTML = `
+        <div style="margin-bottom:10px;">
+            <div style="margin-bottom:5px; color:#555;">Target Work (<i class="var">W</i>):</div>
+            <div style="font-size:1.1em;">
+                ${v('W')} = ${v('&tau;&Delta;&theta;')} = <b>${state.workTotal.toFixed(0)} J</b>
+                <span style="font-size:0.8em; color:#777;">&nbsp;&nbsp;[(${state.tauApp.toFixed(0)} N&middot;m) &times; (${state.thetaTarget.toFixed(1)} rad)]</span>
+            </div>
+        </div>
+        <div>
+            <div style="margin-bottom:5px; color:#555;">Work Completed (Live):</div>
+            <div style="font-size:1.1em; color:#27ae60;">
+                <b>${currentWork.toFixed(0)} J</b>
+            </div>
+        </div>
+    `;
+}
+
+function start_6_2() {
+    if (!state.running) {
+        state.running = true;
+        state.t = 0;
+        state.omega = 0;
+        state.theta = 0;
+        state.history = [];
+        
+        calcPhysics_6_2();
+        updateLocks_6_2();
+        loop_6_2();
+    }
+}
+
+function reset_6_2() {
+    let savedLevel = loadProgress('6.2'); 
+
+    state = {
+        tauApp: parseFloat(document.getElementById('in-tau').value),
+        thetaTarget: parseFloat(document.getElementById('in-ang').value),
+        I: parseFloat(document.getElementById('in-i').value),
+        
+        theta: 0.0, 
+        omega: 0.0, 
+        alpha: 0.0,
+        t: 0,
+        workTotal: 0,
+        
+        running: false,
+        history: [], 
+        
+        mode: document.querySelector('input[name="sim-mode"]:checked').value,
+        level: savedLevel
+    };
+    
+    if (state.mode === 'guided') {
+        if (state.level === 0) {
+            state.tauApp = 50; state.thetaTarget = 10.0; state.I = 20.0;
+        } else if (state.level === 1) {
+            state.tauApp = 80; state.thetaTarget = 20.0; state.I = 10.0;
+        } else if (state.level === 2) {
+            state.tauApp = 100; state.I = 25.0; state.thetaTarget = 10.0; // User must adjust thetaTarget
+        }
+        
+        document.getElementById('in-tau').value = state.tauApp;
+        document.getElementById('in-ang').value = state.thetaTarget;
+        document.getElementById('in-i').value = state.I;
+        
+        document.getElementById('v-tau').innerText = state.tauApp.toFixed(0);
+        document.getElementById('v-ang').innerText = state.thetaTarget.toFixed(1);
+        document.getElementById('v-i').innerText = state.I.toFixed(1);
+    }
+    
+    calcPhysics_6_2();
+
+    if (state.level >= 3) {
+        document.getElementById('u6-2-badge').style.display = 'block';
+    }
+
+    setMode_6_2(state.mode);
+    updateCalcDisplay_6_2();
+    
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            draw_6_2();
+        });
+    });
+}
+
+function loop_6_2() {
+    if (currentSim !== '6.2') return;
+
+    if (state.running) {
+        let dt = 0.02;
+        state.t += dt;
+        
+        state.omega += state.alpha * dt;
+        state.theta += state.omega * dt;
+        
+        if (state.t * 60 % 3 < 1) { 
+            state.history.push({
+                t: state.t, 
+                theta: state.theta
+            });
+        }
+        
+        // Stop condition: Target angle reached
+        if (state.theta >= state.thetaTarget) {
+            state.theta = state.thetaTarget; // Snap exactly to target
+            state.running = false;
+            
+            if (state.mode === 'guided') {
+                checkLevel_6_2();
+            }
+            updateLocks_6_2();
+        }
+    }
+
+    updateCalcDisplay_6_2();
+    draw_6_2();
+    
+    if (state.running) {
+        requestAnimationFrame(loop_6_2);
+    }
+}
+
+function draw_6_2() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    let cx = 350;
+    let cy = 250;
+    let visR = 120;
+    
+    // Background Frame
+    ctx.fillStyle = "#ecf0f1";
+    ctx.fillRect(0, 0, 700, 480);
+    
+    // Motor Mount
+    ctx.fillStyle = "#7f8c8d";
+    ctx.fillRect(cx - 30, cy + 20, 60, 200);
+    ctx.fillStyle = "#95a5a6";
+    ctx.fillRect(cx - 60, cy + 200, 120, 30);
+    
+    // --- DRAW FLYWHEEL ---
+    ctx.save();
+    ctx.translate(cx, cy);
+    // Draw clockwise
+    ctx.rotate(state.theta);
+    
+    // Disk Body
+    ctx.beginPath();
+    ctx.arc(0, 0, visR, 0, Math.PI * 2);
+    ctx.fillStyle = "#34495e";
+    ctx.fill();
+    ctx.strokeStyle = "#2c3e50";
+    ctx.lineWidth = 6;
+    ctx.stroke();
+    
+    // Disk Pattern
+    ctx.fillStyle = "#ecf0f1";
+    for (let i = 0; i < 6; i++) {
+        ctx.beginPath();
+        ctx.arc(visR * 0.6 * Math.cos(i * Math.PI / 3), visR * 0.6 * Math.sin(i * Math.PI / 3), 15, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    // Indicator Line
+    ctx.strokeStyle = "#e74c3c";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(visR, 0);
+    ctx.stroke();
+    
+    ctx.restore();
+    
+    // Center Axle
+    ctx.fillStyle = "#f1c40f";
+    ctx.beginPath();
+    ctx.arc(cx, cy, 15, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // --- DRAW TORQUE ARROW ---
+    if (state.running) {
+        ctx.strokeStyle = "rgba(192, 57, 43, 0.8)";
+        ctx.lineWidth = 8;
+        
+        ctx.beginPath();
+        ctx.arc(cx, cy, visR + 20, -Math.PI / 2, -Math.PI / 2 + 1.0, false);
+        ctx.stroke();
+        
+        // Arrowhead
+        let tAng = -Math.PI / 2 + 1.0 + Math.PI / 2; 
+        let aX = cx + (visR + 20) * Math.cos(-Math.PI / 2 + 1.0);
+        let aY = cy + (visR + 20) * Math.sin(-Math.PI / 2 + 1.0);
+        
+        ctx.fillStyle = "rgba(192, 57, 43, 1.0)";
+        ctx.beginPath();
+        ctx.moveTo(aX + 15 * Math.cos(tAng), aY + 15 * Math.sin(tAng));
+        ctx.lineTo(aX + 18 * Math.cos(tAng + 2.6), aY + 18 * Math.sin(tAng + 2.6));
+        ctx.lineTo(aX + 18 * Math.cos(tAng - 2.6), aY + 18 * Math.sin(tAng - 2.6));
+        ctx.fill();
+    }
+    
+    // --- HUD ---
+    ctx.fillStyle = "#2c3e50";
+    ctx.font = "bold 18px sans-serif";
+    ctx.textAlign = "left";
+    
+    let currentWork = state.running ? (state.tauApp * state.theta) : 0;
+    if (!state.running && state.theta >= state.thetaTarget) {
+        currentWork = state.workTotal;
+    }
+    
+    ctx.fillText(`Rotations: ${(state.theta / (2 * Math.PI)).toFixed(2)} rev`, 30, 40);
+    ctx.fillText(`Work Done: ${currentWork.toFixed(0)} J`, 30, 70);
+    
+    // --- BOTTOM GRAPH PANEL (Angle vs Time) ---
+    let panelY = 480;
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, panelY, 700, 160);
+    
+    ctx.strokeStyle = "#ccc";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, panelY);
+    ctx.lineTo(700, panelY);
+    ctx.stroke();
+    
+    // Graph bounds based on expected end time
+    // theta = 0.5 * alpha * t^2 -> t = sqrt(2*theta / alpha)
+    let expectedT = Math.sqrt((2 * state.thetaTarget) / state.alpha);
+    let dynamicTMax = Math.max(expectedT * 1.1, 2.0); // 10% buffer, minimum 2.0s
+    let dynamicAngMax = Math.ceil(state.thetaTarget / 5) * 5; // Round to nearest 5
+    
+    drawMiniGraph_6_2(50, panelY + 20, 600, 120, state.history, dynamicTMax, dynamicAngMax);
+}
+
+function drawMiniGraph_6_2(x, y, w, h, data, tMax, angMax) {
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 1;
+    
+    // Axes Boundary
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y + h);
+    ctx.lineTo(x + w, y + h);
+    ctx.stroke();
+    
+    // Labels
+    ctx.fillStyle = "#333";
+    ctx.textAlign = "center";
+    ctx.font = "12px sans-serif";
+    
+    ctx.save();
+    ctx.translate(x - 35, y + h / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText("Angle (rad)", 0, 0);
+    ctx.restore();
+    
+    ctx.fillText("Time (s)", x + w / 2, y + h + 30);
+    
+    // Axis values
+    ctx.textAlign = "right";
+    ctx.fillText(angMax.toFixed(0), x - 5, y + 10);
+    ctx.fillText("0", x - 5, y + h);
+    ctx.fillText(tMax.toFixed(1) + " s", x + w + 15, y + h + 15);
+    
+    if (data.length > 0) {
+        let pxPerAng = h / angMax;
+        
+        ctx.beginPath();
+        ctx.strokeStyle = "#e67e22";
+        ctx.lineWidth = 3;
+        
+        for (let i = 0; i < data.length; i++) {
+            let p = data[i];
+            
+            let px = x + (p.t / tMax) * w;
+            let py = (y + h) - (p.theta * pxPerAng);
+            
+            if (i === 0) {
+                ctx.moveTo(px, py);
+            } else {
+                ctx.lineTo(px, py);
+            }
+        }
+        ctx.stroke();
+    }
+}
+
+function renderQuestions_6_2() {
+    let div = document.getElementById('u6-2-questions');
+    const v = (text) => `<i class="var">${text}</i>`;
+
+    if (state.level === 0) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#2980b9;">Level 1: Calculating Work</h4>
+            <p>Applied Torque ${v('&tau;')} is <b>50 N&middot;m</b>.</p>
+            <p>Target Angle ${v('&Delta;&theta;')} is <b>10.0 rad</b>.</p>
+            <p>Calculate the total Work (${v('W')}) the motor will perform.</p>
+            <div style="margin-top:10px;">
+                <input type="number" id="ans-1" placeholder="Joules" style="width:100px; padding:4px;" 
+                       onkeypress="if(event.key==='Enter') checkAnswer_6_2(0)"> 
+                <button onclick="checkAnswer_6_2(0)" style="cursor:pointer; padding:4px 8px;">Check</button>
+            </div>
+            <div id="fb-0"></div>
+        `;
+    } else if (state.level === 1) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#c0392b;">Level 2: Energy Transfer</h4>
+            <p>Torque is <b>80 N&middot;m</b>. Angle is <b>20.0 rad</b>.</p>
+            <p>The flywheel starts from rest (${v('&omega;<sub>0</sub>')} = 0).</p>
+            <p>All work is converted to Rotational Kinetic Energy (${v('K<sub>rot</sub>')}).</p>
+            <p>Calculate the final ${v('K<sub>rot</sub>')} at the end of the burn.</p>
+            <div style="margin-top:10px;">
+                <input type="number" id="ans-2" placeholder="Joules" style="width:100px; padding:4px;" 
+                       onkeypress="if(event.key==='Enter') checkAnswer_6_2(1)"> 
+                <button onclick="checkAnswer_6_2(1)" style="cursor:pointer; padding:4px 8px;">Check</button>
+            </div>
+            <div id="fb-1"></div>
+        `;
+    } else if (state.level === 2) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 3: Precise Delivery</h4>
+            <p>The factory requires exactly <b>3500 Joules</b> of Work.</p>
+            <p>Torque ${v('&tau;')} is locked at <b>100 N&middot;m</b>.</p>
+            <p>Adjust the Target Angle (${v('&Delta;&theta;')}) to deliver exactly 3500 J, then click "Apply Work".</p>
+            <div id="fb-2" style="margin-top:10px; font-weight:bold;">Waiting for run...</div>
+        `;
+    } else {
+        div.innerHTML = `
+            <h3 style="color:#f39c12; margin:0;">&#9733; MOTOR MECHANIC &#9733;</h3>
+            <p>You have mastered Rotational Work!</p>
+        `;
+    }
+}
+
+function checkAnswer_6_2(lvl) {
+    let correct = false;
+    let fb = document.getElementById('fb-' + lvl);
+    
+    if (lvl === 0) {
+        let val = parseFloat(document.getElementById('ans-1').value);
+        // W = tau * theta = 50 * 10 = 500
+        if (Math.abs(val - 500.0) < 1.0) {
+            correct = true;
+        } else {
+             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Incorrect. Check your math!</span>`;
+             return;
+        }
+    } else if (lvl === 1) {
+        let val = parseFloat(document.getElementById('ans-2').value);
+        // K_final = W = tau * theta = 80 * 20 = 1600.
+        if (Math.abs(val - 1600.0) < 1.0) {
+            correct = true;
+        } else {
+             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Incorrect. Work equals change in Kinetic Energy!</span>`;
+             return;
+        }
+    }
+
+    if (correct) {
+        fb.innerHTML = "<span style='color:green; font-weight:bold;'>Correct! Unlocking next step...</span>";
+        setTimeout(() => {
+            state.level++;
+            saveProgress('6.2', state.level);
+            if (state.level >= 3) {
+                document.getElementById('u6-2-badge').style.display = 'block';
+            }
+            renderQuestions_6_2();
+            reset_6_2();
+        }, 1500);
+    }
+}
+
+// AUTOMATIC EVALUATION OF LEVEL 3 WHEN THE MOTOR STOPS
+function checkLevel_6_2() {
+    if (state.mode === 'guided' && state.level === 2) {
+        let fb = document.getElementById('fb-2');
+        
+        // Did they deliver exactly 3500 J?
+        if (Math.abs(state.workTotal - 3500.0) < 5.0) { 
+            fb.innerHTML = "<span style='color:green;'>Perfect! You delivered exactly 3500 Joules! Unlocking mastery...</span>";
+            setTimeout(() => {
+                state.level++;
+                saveProgress('6.2', state.level);
+                document.getElementById('u6-2-badge').style.display = 'block';
+                renderQuestions_6_2();
+                reset_6_2();
+            }, 2000);
+        } else {
+            fb.innerHTML = `<span style='color:#c0392b;'>Missed! You delivered ${state.workTotal.toFixed(0)} J. The target was 3500 J. Adjust Angle and try again.</span>`;
+        }
+    }
+}
