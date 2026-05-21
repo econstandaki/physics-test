@@ -196,7 +196,7 @@ function loadSim(simId) {
 }
 
 // ===============================================
-// === UNIT 1.1: SCALARS & VECTORS IN 1D (Gold Standard v4.14) ===
+// === UNIT 1.1: SCALARS & VECTORS IN 1D (Gold Standard v4.15) ===
 // ===============================================
 
 function setup_1_1() {
@@ -278,7 +278,7 @@ function updateState_1_1(key, val) {
     if (key === 'vTarget') {
         document.getElementById('v-v').innerText = state.vTarget.toFixed(1);
         if (state.running) {
-            state.v = state.vTarget; // Update live velocity if motor is running
+            state.v = state.vTarget; 
         }
     }
     
@@ -311,7 +311,6 @@ function setMode_1_1(mode) {
 
 function updateLocks_1_1() {
     let sliders = document.querySelectorAll('.phys-slider');
-    
     sliders.forEach(s => {
         s.disabled = false;
         s.style.opacity = "1.0";
@@ -322,14 +321,12 @@ function toggleMotor_1_1() {
     let btn = document.getElementById('btn-motor');
     
     if (state.running) {
-        // Stop Motor
         state.running = false;
         state.v = 0;
         btn.innerText = "Start Motor";
         btn.classList.remove('btn-red');
         btn.classList.add('btn-green');
     } else {
-        // Start Motor
         state.running = true;
         state.v = state.vTarget;
         btn.innerText = "Stop Motor (Brake)";
@@ -346,8 +343,6 @@ function toggleMotor_1_1() {
 function updateCalcDisplay_1_1() {
     let box = document.getElementById('calc-1-1');
     if (!box) return;
-    
-    const v = (t) => `<i class="var" style="font-family:'Times New Roman',serif">${t}</i>`;
     
     box.innerHTML = `
         <div style="display:flex; justify-content:space-around; align-items:center;">
@@ -385,7 +380,6 @@ function reset_1_1() {
         level: savedLevel
     };
     
-    // Reset Button UI
     btn.innerText = "Start Motor";
     btn.classList.remove('btn-red');
     btn.classList.add('btn-green');
@@ -411,25 +405,25 @@ function loop_1_1() {
     }
 
     if (state.running) {
-        let dt = 0.02; // Fixed timestep for reliable distance integration
+        let dt = 0.02; 
         state.t += dt;
         
         let dx = state.v * dt;
-        
-        // Track boundaries (-10 to 10)
         let newX = state.x + dx;
+        
+        // Prevent driving infinitely off-screen
         if (newX > 10.5) {
             newX = 10.5;
-            toggleMotor_1_1(); // Auto-brake at wall
+            toggleMotor_1_1(); 
         } else if (newX < -10.5) {
             newX = -10.5;
-            toggleMotor_1_1(); // Auto-brake at wall
+            toggleMotor_1_1(); 
         }
         
         let actualDx = newX - state.x;
         state.x = newX;
         
-        // Update Physics
+        // CRITICAL FIX: Increment distance accurately regardless of direction
         state.distance += Math.abs(actualDx);
         state.displacement = state.x - state.x0;
     }
@@ -440,7 +434,7 @@ function loop_1_1() {
     if (state.running || Math.abs(state.v) > 0) {
         requestAnimationFrame(loop_1_1);
     } else {
-        state.loopActive = false; // Sleep to save CPU when paused
+        state.loopActive = false; 
     }
 }
 
@@ -448,15 +442,12 @@ function draw_1_1() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     let cy = 300;
-    let cx = 350; // Center of canvas is x=0
-    let pxPerM = 30; // 10m = 300px. Fits nicely.
+    let cx = 350; 
+    let pxPerM = 30; 
     
-    // === ZONE 1: THE TRACK ===
-    // Sky/Bg
+    // Background and Ground
     ctx.fillStyle = "#ecf0f1";
     ctx.fillRect(0, 0, 700, cy + 20);
-    
-    // Ground
     ctx.fillStyle = "#bdc3c7";
     ctx.fillRect(0, cy + 20, 700, 320);
     
@@ -487,7 +478,7 @@ function draw_1_1() {
         ctx.fillText(i + "m", tickX, cy + 50);
     }
     
-    // Original Position Marker
+    // Start Marker
     ctx.strokeStyle = "#e74c3c";
     ctx.lineWidth = 2;
     ctx.setLineDash([5, 5]);
@@ -499,7 +490,7 @@ function draw_1_1() {
     ctx.fillStyle = "#e74c3c";
     ctx.fillText("Start (x=0)", cx, cy - 110);
     
-    // === ZONE 2: THE CART ===
+    // Cart Data
     let cartX = cx + (state.x * pxPerM);
     let cartW = 60;
     let cartH = 30;
@@ -523,8 +514,7 @@ function draw_1_1() {
     ctx.arc(cartX + 15, cy + 20, 8, 0, Math.PI * 2);
     ctx.fill();
     
-    // === ZONE 3: VECTORS ===
-    // Displacement Vector (Blue Arrow)
+    // Displacement Vector Arrow
     if (Math.abs(state.displacement) > 0.1) {
         let arrY = cy - 60;
         ctx.strokeStyle = "#2980b9";
@@ -535,7 +525,6 @@ function draw_1_1() {
         ctx.lineTo(cartX, arrY);
         ctx.stroke();
         
-        // Arrowhead
         let dir = state.displacement > 0 ? 1 : -1;
         ctx.fillStyle = "#2980b9";
         ctx.beginPath();
@@ -550,13 +539,12 @@ function draw_1_1() {
 
 function renderQuestions_1_1() {
     let div = document.getElementById('u1-1-questions');
-    const v = (text) => `<i class="var">${text}</i>`;
 
     if (state.level === 0) {
         div.innerHTML = `
-            <h4 style="margin:0 0 10px 0; color:#2980b9;">Level 1: Straight Line</h4>
+            <h4 style="margin:0 0 10px 0; color:#2980b9;">Level 1: Forward Motion</h4>
             <p>Set a velocity and start the motor.</p>
-            <p>Drive the cart until its <b>Displacement</b> is exactly <b>+8.0 m</b>, then stop.</p>
+            <p>Drive the cart forward and stop the motor when your <b>Displacement</b> is exactly <b>+5.0 m</b>.</p>
             <p style="font-size:0.85em; color:#666;">(Tolerance: &plusmn;0.2 m)</p>
             <div style="margin-top:10px;">
                 <button onclick="checkAnswer_1_1(0)" class="btn btn-green" style="padding:6px 15px;">Verify Position</button>
@@ -565,9 +553,9 @@ function renderQuestions_1_1() {
         `;
     } else if (state.level === 1) {
         div.innerHTML = `
-            <h4 style="margin:0 0 10px 0; color:#c0392b;">Level 2: The Return Trip</h4>
-            <p>Drive forward, then reverse the velocity and drive backward.</p>
-            <p>Park the cart so that <b>Distance</b> = <b>12.0 m</b>, but <b>Displacement</b> = <b>0.0 m</b>.</p>
+            <h4 style="margin:0 0 10px 0; color:#c0392b;">Level 2: Reverse</h4>
+            <p>Set a negative velocity and drive the cart backward.</p>
+            <p>Stop the motor when your <b>Displacement</b> is exactly <b>-5.0 m</b>.</p>
             <p style="font-size:0.85em; color:#666;">(Tolerance: &plusmn;0.2 m)</p>
             <div style="margin-top:10px;">
                 <button onclick="checkAnswer_1_1(1)" class="btn btn-green" style="padding:6px 15px;">Verify Position</button>
@@ -577,10 +565,10 @@ function renderQuestions_1_1() {
     } else if (state.level === 2) {
         div.innerHTML = `
             <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 3: The Boomerang</h4>
-            <p>This is the ultimate test of path vs. vector.</p>
-            <p>Drive the cart to accumulate a total <b>Distance</b> of exactly <b>15.0 m</b>.</p>
+            <p>This tests your understanding of Scalar path vs. Vector location.</p>
+            <p>Drive the cart so it accumulates a total <b>Distance</b> of exactly <b>15.0 m</b>.</p>
             <p>However, your final parked <b>Displacement</b> must be exactly <b>-5.0 m</b>.</p>
-            <p style="font-size:0.85em; color:#666;">(Hint: To get 15m of distance but end up at -5m, how far forward must you go before reversing?)</p>
+            <p style="font-size:0.85em; color:#666;">(Hint: How far forward must you drive before reversing to achieve these numbers?)</p>
             <div style="margin-top:10px;">
                 <button onclick="checkAnswer_1_1(2)" class="btn btn-green" style="padding:6px 15px;">Verify Position</button>
             </div>
@@ -596,7 +584,7 @@ function renderQuestions_1_1() {
 
 function checkAnswer_1_1(lvl) {
     let fb = document.getElementById('fb-' + lvl);
-    let tol = 0.2; // Generous 0.2m tolerance
+    let tol = 0.2; 
     
     if (state.running) {
         fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Stop the motor first to verify your position!</span>`;
@@ -604,19 +592,19 @@ function checkAnswer_1_1(lvl) {
     }
 
     if (lvl === 0) {
-        if (Math.abs(state.displacement - 8.0) <= tol) {
-            fb.innerHTML = "<span style='color:green; font-weight:bold;'>Perfect Parking! Unlocking next step...</span>";
+        if (Math.abs(state.displacement - 5.0) <= tol) {
+            fb.innerHTML = "<span style='color:green; font-weight:bold;'>Perfect! Unlocking next step...</span>";
             setTimeout(() => advanceLevel_1_1(), 1500);
         } else {
-            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Missed! Your Displacement is ${state.displacement.toFixed(1)} m. Aim for +8.0 m. Reset or keep driving.</span>`;
+            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Missed! Your Displacement is ${state.displacement.toFixed(1)} m. Aim for +5.0 m. Reset or keep driving.</span>`;
         }
     } 
     else if (lvl === 1) {
-        if (Math.abs(state.distance - 12.0) <= tol && Math.abs(state.displacement - 0.0) <= tol) {
-            fb.innerHTML = "<span style='color:green; font-weight:bold;'>Perfect Return! Unlocking next step...</span>";
+        if (Math.abs(state.displacement - (-5.0)) <= tol) {
+            fb.innerHTML = "<span style='color:green; font-weight:bold;'>Perfect! Unlocking next step...</span>";
             setTimeout(() => advanceLevel_1_1(), 1500);
         } else {
-            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Missed! Dist = ${state.distance.toFixed(1)} m | Disp = ${state.displacement.toFixed(1)} m. Reset and try again!</span>`;
+            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Missed! Your Displacement is ${state.displacement.toFixed(1)} m. Aim for -5.0 m.</span>`;
         }
     }
     else if (lvl === 2) {
