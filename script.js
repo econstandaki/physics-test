@@ -196,21 +196,21 @@ function loadSim(simId) {
 }
 
 // ===============================================
-// === UNIT 1.1: SCALARS & VECTORS IN 1D (Gold Standard v4.15) ===
+// === UNIT 1.1: SCALARS & VECTORS (Gold Standard v4.0) ===
 // ===============================================
 
 function setup_1_1() {
     canvas.width = 700; 
-    canvas.height = 640; 
+    canvas.height = 600; 
 
-    document.getElementById('sim-title').innerText = "1.1 Scalars & Vectors in 1D";
+    document.getElementById('sim-title').innerText = "1.1 Scalars and Vectors in 1D";
     
     document.getElementById('sim-desc').innerHTML = `
         <h3 style="margin-top:0; margin-bottom:10px;">Distance vs. Displacement</h3>
         <p style="margin-bottom:10px; line-height:1.4;">
-        <b>Distance</b> is a scalar (the total path traveled). <b>Displacement</b> is a vector (the straight-line change in position from start to finish).
-        <br><b>Equations:</b> <i class="var">d</i> = &Sigma;|path| &nbsp;|&nbsp; &Delta;<i class="var">x</i> = <i class="var">x<sub>f</sub></i> - <i class="var">x<sub>0</sub></i>
-        <br><i><b>Mission:</b> Drive the cart to hit specific combinations of distance and displacement!</i></p>`;
+        <b>Scalars (Distance)</b> add up every step you take.<br>
+        <b>Vectors (Displacement)</b> care only about Start vs. End.<br>
+        <i><b>Mission:</b> Add motion vectors to match the targets below.</i></p>`;
 
     document.getElementById('sim-controls').innerHTML = `
         <div style="background:#eef2f3; padding:10px; border-radius:5px; margin-bottom:15px; border:1px solid #ccc; display:flex; justify-content:space-between; align-items:center;">
@@ -226,42 +226,42 @@ function setup_1_1() {
                 </div>
             </div>
             <div id="u1-1-badge" style="display:none; font-weight:bold; color:#f39c12; font-family:sans-serif; text-align:right;">
-                <span style="font-size:1.5em; vertical-align:middle;">&#9733;</span> NAVIGATOR
+                <span style="font-size:1.5em; vertical-align:middle;">&#9733;</span> SCALAR MASTER
             </div>
         </div>
 
-        <div id="calc-1-1" style="background:white; border:1px solid #2c3e50; border-radius:4px; padding:15px; margin-bottom:15px; font-family:'Times New Roman', serif; font-size:1.1em; line-height:1.6; text-align:center;">
-        </div>
-
-        <div class="control-group" style="border-left: 4px solid #2980b9; padding-left: 10px;">
-            <label style="color:#2980b9; font-weight:bold; display:flex; justify-content:space-between;">
-                <span>Velocity (<i class="var">v</i>):</span>
-                <span><span id="v-v">0.0</span> m/s</span>
-            </label>
-            <input type="range" id="in-v" class="phys-slider" min="-5.0" max="5.0" step="0.5" value="0.0" 
-                oninput="updateState_1_1('vTarget', this.value)">
+        <div class="control-group" style="border-left: 4px solid #8e44ad; padding-left: 10px;">
+            <label style="color:#8e44ad; font-weight:bold;">Next Displacement (<i class="var">&Delta;x</i>): <span id="v-dx">0.0</span> m</label>
+            <input type="range" id="in-dx" class="phys-slider" min="-8" max="8" step="1" value="0" 
+                oninput="updateState_1_1('nextDx', this.value)">
         </div>
 
         <div style="margin-top:15px; display:flex; gap:10px;">
-            <button class="btn btn-green" onclick="toggleMotor_1_1()" id="btn-motor">Start Motor</button>
+            <button class="btn btn-green" onclick="step_1_1()" id="btn-move">Move Cart</button>
             <button class="btn btn-red" onclick="reset_1_1()">Reset</button>
+        </div>
+
+        <div style="margin-top:15px; padding:15px; background:#fff; border:1px solid #ddd; border-radius:4px; font-family:'Times New Roman', serif;">
+            <div id="eq-dist" style="margin-bottom:8px; font-size:1.0em;"></div>
+            <div id="eq-disp" style="font-size:1.0em;"></div>
         </div>
         
         <div id="u1-1-questions" style="margin-top:20px; border-top:2px solid #eee; padding-top:15px; background:#fafafa; padding:15px; border-radius:5px;">
         </div>
     `;
 
+    // Snap Protection
     const preventJump = (e) => {
         const rect = e.target.getBoundingClientRect();
         const min = parseFloat(e.target.min);
         const max = parseFloat(e.target.max);
         const val = parseFloat(e.target.value);
         let clientX = e.clientX;
-        if (e.type === 'touchstart') clientX = e.touches[0].clientX;
+        if(e.type === 'touchstart') clientX = e.touches[0].clientX;
         const ratio = (val - min) / (max - min);
         const clickX = clientX - rect.left;
         const thumbX = ratio * rect.width;
-        if (Math.abs(clickX - thumbX) > 35) e.preventDefault();
+        if(Math.abs(clickX - thumbX) > 35) e.preventDefault();
     };
 
     document.querySelectorAll('.phys-slider').forEach(s => {
@@ -273,16 +273,14 @@ function setup_1_1() {
 }
 
 function updateState_1_1(key, val) {
-    state[key] = parseFloat(val);
+    if(state.moving) return; // Lock while animating
     
-    if (key === 'vTarget') {
-        document.getElementById('v-v').innerText = state.vTarget.toFixed(1);
-        if (state.running) {
-            state.v = state.vTarget; 
-        }
+    state[key] = parseFloat(val);
+    if(key === 'nextDx') {
+        document.getElementById('v-dx').innerText = state.nextDx.toFixed(1);
     }
     
-    updateCalcDisplay_1_1();
+    // Preview the arrow
     draw_1_1();
 }
 
@@ -291,275 +289,280 @@ function setMode_1_1(mode) {
     const qDiv = document.getElementById('u1-1-questions');
     const badge = document.getElementById('u1-1-badge');
 
-    if (state.level >= 3) {
-        badge.style.display = 'block';
-    } else {
-        badge.style.display = 'none';
-    }
+    if(state.level >= 3) badge.style.display = 'block';
+    else badge.style.display = 'none';
 
-    if (mode === 'challenge') {
+    if(mode === 'challenge') {
         qDiv.style.display = 'none';
     } else {
         qDiv.style.display = 'block';
         renderQuestions_1_1();
     }
-    
     updateLocks_1_1();
-    draw_1_1();
-    updateCalcDisplay_1_1();
 }
 
 function updateLocks_1_1() {
     let sliders = document.querySelectorAll('.phys-slider');
+    let moveBtn = document.getElementById('btn-move');
+    
+    // Lock if moving
+    let lock = state.moving;
+    
     sliders.forEach(s => {
-        s.disabled = false;
-        s.style.opacity = "1.0";
+        s.disabled = lock;
+        s.style.opacity = lock ? "0.5" : "1.0";
     });
+    moveBtn.disabled = lock;
+    moveBtn.style.opacity = lock ? "0.5" : "1.0";
 }
 
-function toggleMotor_1_1() {
-    let btn = document.getElementById('btn-motor');
+function step_1_1() {
+    if(state.moving || Math.abs(state.nextDx) < 0.1) return;
     
-    if (state.running) {
-        state.running = false;
-        state.v = 0;
-        btn.innerText = "Start Motor";
-        btn.classList.remove('btn-red');
-        btn.classList.add('btn-green');
-    } else {
-        state.running = true;
-        state.v = state.vTarget;
-        btn.innerText = "Stop Motor (Brake)";
-        btn.classList.remove('btn-green');
-        btn.classList.add('btn-red');
-        
-        if (!state.loopActive) {
-            state.loopActive = true;
-            loop_1_1();
-        }
-    }
-}
-
-function updateCalcDisplay_1_1() {
-    let box = document.getElementById('calc-1-1');
-    if (!box) return;
+    // Commit the move
+    state.history.push(state.nextDx);
     
-    box.innerHTML = `
-        <div style="display:flex; justify-content:space-around; align-items:center;">
-            <div>
-                <div style="color:#7f8c8d; font-size:0.9em; text-transform:uppercase;">Distance (Scalar)</div>
-                <div style="color:#d35400; font-size:1.8em; font-weight:bold;">${state.distance.toFixed(1)} m</div>
-            </div>
-            <div style="border-left: 2px solid #ccc; height: 50px;"></div>
-            <div>
-                <div style="color:#7f8c8d; font-size:0.9em; text-transform:uppercase;">Displacement (Vector)</div>
-                <div style="color:#2980b9; font-size:1.8em; font-weight:bold;">${state.displacement > 0 ? '+' : ''}${state.displacement.toFixed(1)} m</div>
-            </div>
-        </div>
-    `;
+    // Animation Setup
+    state.startPos = state.currentPos;
+    state.targetPos = state.currentPos + state.nextDx;
+    state.animProgress = 0;
+    state.moving = true;
+    
+    updateLocks_1_1();
+    loop_1_1();
 }
 
 function reset_1_1() {
     let savedLevel = loadProgress('1.1'); 
-    let btn = document.getElementById('btn-motor');
 
     state = {
-        vTarget: parseFloat(document.getElementById('in-v').value),
-        v: 0.0,
+        nextDx: parseFloat(document.getElementById('in-dx').value),
+        currentPos: 0,
+        distance: 0,
         
-        x0: 0.0,
-        x: 0.0,
-        distance: 0.0,
-        displacement: 0.0,
+        history: [], // Stores list of moves [3, -2, 5]
         
-        t: 0,
-        running: false,
-        loopActive: false,
+        // Animation State
+        moving: false,
+        startPos: 0,
+        targetPos: 0,
+        animProgress: 0,
         
         mode: document.querySelector('input[name="sim-mode"]:checked').value,
         level: savedLevel
     };
     
-    btn.innerText = "Start Motor";
-    btn.classList.remove('btn-red');
-    btn.classList.add('btn-green');
-
-    if (state.level >= 3) {
-        document.getElementById('u1-1-badge').style.display = 'block';
-    }
+    if(state.level >= 3) document.getElementById('u1-1-badge').style.display = 'block';
 
     setMode_1_1(state.mode);
-    updateCalcDisplay_1_1();
-    
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            draw_1_1();
-        });
-    });
+    draw_1_1(); // Initial Draw
 }
 
 function loop_1_1() {
-    if (currentSim !== '1.1') {
-        state.loopActive = false;
-        return;
-    }
+    if(currentSim !== '1.1') return;
 
-    if (state.running) {
-        let dt = 0.02; 
-        state.t += dt;
-        
-        let dx = state.v * dt;
-        let newX = state.x + dx;
-        
-        // Prevent driving infinitely off-screen
-        if (newX > 10.5) {
-            newX = 10.5;
-            toggleMotor_1_1(); 
-        } else if (newX < -10.5) {
-            newX = -10.5;
-            toggleMotor_1_1(); 
+    if(state.moving) {
+        // Animation Logic
+        state.animProgress += 0.05; // Speed
+        if(state.animProgress >= 1) {
+            state.animProgress = 1;
+            state.moving = false;
+            state.currentPos = state.targetPos;
+            
+            // Update Distance Accumulator
+            state.distance += Math.abs(state.history[state.history.length-1]);
+            
+            // Check Level Completion
+            if(state.mode === 'guided') checkLevel_1_1();
+            updateLocks_1_1();
+        } else {
+            // Lerp Position
+            state.currentPos = state.startPos + (state.targetPos - state.startPos) * state.animProgress;
         }
-        
-        let actualDx = newX - state.x;
-        state.x = newX;
-        
-        // CRITICAL FIX: Increment distance accurately regardless of direction
-        state.distance += Math.abs(actualDx);
-        state.displacement = state.x - state.x0;
     }
 
-    updateCalcDisplay_1_1();
+    // Live Equation Update
+    let dColor = "#e67e22"; // Orange for Distance
+    let xColor = "#8e44ad"; // Purple for Displacement
+    
+    document.getElementById('eq-dist').innerHTML = 
+        `<span style="color:${dColor}; font-weight:bold;">Distance:</span> <i>d</i> = ${state.distance.toFixed(1)} m`;
+        
+    let dispVal = state.currentPos.toFixed(1);
+    document.getElementById('eq-disp').innerHTML = 
+        `<span style="color:${xColor}; font-weight:bold;">Displacement:</span> <i class="var">&Delta;x</i> = ${dispVal} m`;
+
     draw_1_1();
     
-    if (state.running || Math.abs(state.v) > 0) {
-        requestAnimationFrame(loop_1_1);
-    } else {
-        state.loopActive = false; 
-    }
+    if(state.moving) requestAnimationFrame(loop_1_1);
 }
 
 function draw_1_1() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0,0,canvas.width, canvas.height);
     
-    let cy = 300;
-    let cx = 350; 
-    let pxPerM = 30; 
+    // --- ZONE 1: THE WORLD (Top 200px) ---
+    let trackY = 150; 
+    let trackH = 40;
+    ctx.fillStyle = "#ecf0f1"; ctx.fillRect(0,0,700, trackY); 
+    ctx.fillStyle = "#bdc3c7"; ctx.fillRect(0, trackY, 700, trackH); 
     
-    // Background and Ground
-    ctx.fillStyle = "#ecf0f1";
-    ctx.fillRect(0, 0, 700, cy + 20);
-    ctx.fillStyle = "#bdc3c7";
-    ctx.fillRect(0, cy + 20, 700, 320);
+    // Ticks
+    let pxPerM = 30; // Scale: 30px = 1m
+    let centerX = 350;
     
-    // Number Line
-    ctx.strokeStyle = "#34495e";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(50, cy + 20);
-    ctx.lineTo(650, cy + 20);
-    ctx.stroke();
-    
-    // Ticks & Labels
-    ctx.fillStyle = "#2c3e50";
-    ctx.font = "bold 14px sans-serif";
-    ctx.textAlign = "center";
-    
-    for (let i = -10; i <= 10; i += 2) {
-        let tickX = cx + (i * pxPerM);
-        
-        ctx.lineWidth = i === 0 ? 4 : 2;
-        ctx.strokeStyle = i === 0 ? "#c0392b" : "#34495e";
-        
-        ctx.beginPath();
-        ctx.moveTo(tickX, cy + 10);
-        ctx.lineTo(tickX, cy + 30);
-        ctx.stroke();
-        
-        ctx.fillText(i + "m", tickX, cy + 50);
+    ctx.fillStyle = "#7f8c8d"; ctx.font = "10px sans-serif"; ctx.textAlign = "center";
+    for(let i=-10; i<=10; i++) {
+        let x = centerX + i*pxPerM;
+        ctx.fillRect(x, trackY, 1, 10);
+        ctx.fillText(i, x, trackY + 25);
     }
+
+    // Draw History Arrows (Ghost Vectors)
+    let cursorX = centerX; // Start at 0
+    let yStack = trackY - 40; // Stack arrows upwards
     
-    // Start Marker
-    ctx.strokeStyle = "#e74c3c";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 5]);
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - 100);
-    ctx.lineTo(cx, cy + 20);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = "#e74c3c";
-    ctx.fillText("Start (x=0)", cx, cy - 110);
+    state.history.forEach((dx) => {
+        let startX = cursorX;
+        let endX = cursorX + dx*pxPerM;
+        
+        // Draw dashed arrow for past moves
+        drawVector(startX, yStack, dx*pxPerM, 0, "rgba(52, 152, 219, 0.5)");
+        
+        cursorX = endX;
+        yStack -= 25; // Stack up
+    });
     
-    // Cart Data
-    let cartX = cx + (state.x * pxPerM);
-    let cartW = 60;
+    // Draw Current Move (Animated or Preview)
+    if(state.moving) {
+        // We are animating the cart, but the vector is fixed for this step
+        let moveDx = state.history[state.history.length-1];
+        // Draw the active vector solid
+        let startX = centerX + state.startPos*pxPerM;
+        drawVector(startX, yStack, moveDx*pxPerM, 0, "#3498db");
+    } else if (Math.abs(state.nextDx) > 0) {
+        // Preview Vector
+        let startX = centerX + state.currentPos*pxPerM;
+        drawVector(startX, yStack, state.nextDx*pxPerM, 0, "rgba(142, 68, 173, 0.5)"); // Faint purple
+        
+        ctx.fillStyle = "#8e44ad"; ctx.font="bold 12px sans-serif";
+        ctx.fillText("Next", startX + (state.nextDx*pxPerM)/2, yStack - 5);
+    }
+
+    // Draw The Cart
+    let cartX = centerX + (state.currentPos * pxPerM);
+    let cartY = trackY - 30; 
+    let cartW = 50; 
     let cartH = 30;
+
+    ctx.fillStyle = "#e74c3c"; // Red Cart
+    ctx.fillRect(cartX - cartW/2, cartY, cartW, cartH);
+    ctx.strokeStyle = "#c0392b"; ctx.lineWidth = 2; 
+    ctx.strokeRect(cartX - cartW/2, cartY, cartW, cartH);
     
-    // Odometer Trail (Orange)
-    if (state.distance > 0) {
-        ctx.fillStyle = "rgba(211, 84, 0, 0.2)";
-        ctx.fillRect(Math.min(cx, cartX), cy - cartH - 10, Math.abs(cartX - cx), 10);
+    ctx.fillStyle = "#333"; // Wheels
+    ctx.beginPath(); ctx.arc(cartX - 15, cartY + cartH, 6, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cartX + 15, cartY + cartH, 6, 0, Math.PI*2); ctx.fill();
+
+
+    // --- ZONE 2: THE DASHBOARD (Bottom 400px) ---
+    // Split Panel: Scalars Left, Vectors Right
+    let panelY = 250; 
+    let panelH = 350; 
+    ctx.fillStyle = "white"; ctx.fillRect(0, panelY, 700, panelH);
+    ctx.strokeStyle = "#ddd"; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(0, panelY); ctx.lineTo(700, panelY); ctx.stroke();
+    
+    // Draw Divider
+    ctx.beginPath(); ctx.moveTo(350, panelY); ctx.lineTo(350, panelY+panelH); ctx.stroke();
+
+    // --- LEFT GRAPH: DISTANCE (Scalar) ---
+    let dZeroX = 50;
+    let dZeroY = panelY + 300; 
+    let dScale = 8; // Pixels per meter (accumulates fast)
+    
+    // Axes
+    ctx.strokeStyle = "#333"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(dZeroX, dZeroY); ctx.lineTo(320, dZeroY); ctx.stroke(); // X
+    ctx.beginPath(); ctx.moveTo(dZeroX, panelY+30); ctx.lineTo(dZeroX, dZeroY); ctx.stroke(); // Y
+    
+    // Scale Numbers (Distance)
+    ctx.fillStyle = "#555"; ctx.font = "10px sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    for(let v = 0; v <= 30; v += 5) {
+        let y = dZeroY - (v * dScale);
+        if(y > panelY+30) {
+            ctx.beginPath(); ctx.moveTo(dZeroX, y); ctx.lineTo(dZeroX-5, y); ctx.stroke();
+            ctx.fillText(v, dZeroX - 8, y);
+        }
     }
     
-    // Cart Body
-    ctx.fillStyle = "#2980b9";
-    ctx.fillRect(cartX - cartW / 2, cy + 20 - cartH, cartW, cartH);
+    // Title Left
+    ctx.save();
+    ctx.translate(20, dZeroY - 120); 
+    ctx.rotate(-Math.PI/2);
+    ctx.textAlign = "center"; ctx.font = "bold 14px sans-serif"; ctx.fillStyle = "#e67e22";
+    ctx.fillText("Distance (m)", 0, 0);
+    ctx.restore();
     
-    // Wheels
-    ctx.fillStyle = "#333";
-    ctx.beginPath();
-    ctx.arc(cartX - 15, cy + 20, 8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(cartX + 15, cy + 20, 8, 0, Math.PI * 2);
-    ctx.fill();
+    // Distance Bar
+    drawBar(185, dZeroY, state.distance, dScale, "#e67e22", "d", "", true);
+
+
+    // --- RIGHT GRAPH: DISPLACEMENT (Vector) ---
+    let vZeroX = 400; 
+    let vZeroY = panelY + 160; // Center Y
+    let vScale = 12; // Pixels per meter
     
-    // Displacement Vector Arrow
-    if (Math.abs(state.displacement) > 0.1) {
-        let arrY = cy - 60;
-        ctx.strokeStyle = "#2980b9";
-        ctx.lineWidth = 4;
-        
-        ctx.beginPath();
-        ctx.moveTo(cx, arrY);
-        ctx.lineTo(cartX, arrY);
-        ctx.stroke();
-        
-        let dir = state.displacement > 0 ? 1 : -1;
-        ctx.fillStyle = "#2980b9";
-        ctx.beginPath();
-        ctx.moveTo(cartX, arrY);
-        ctx.lineTo(cartX - dir * 15, arrY - 10);
-        ctx.lineTo(cartX - dir * 15, arrY + 10);
-        ctx.fill();
-        
-        ctx.fillText(`Δx = ${state.displacement.toFixed(1)} m`, cx + (cartX - cx) / 2, arrY - 15);
+    // Axes
+    ctx.strokeStyle = "#333"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(vZeroX, vZeroY); ctx.lineTo(670, vZeroY); ctx.stroke(); // X
+    ctx.beginPath(); ctx.moveTo(vZeroX, panelY+30); ctx.lineTo(vZeroX, panelY+panelH-30); ctx.stroke(); // Y
+    
+    // Scale Numbers (Displacement)
+    ctx.fillStyle = "#555"; ctx.font = "10px sans-serif"; ctx.textAlign = "right"; 
+    for(let v = -10; v <= 10; v += 5) {
+        if(v===0) continue;
+        let y = vZeroY - (v * vScale);
+        ctx.beginPath(); ctx.moveTo(vZeroX, y); ctx.lineTo(vZeroX-5, y); ctx.stroke();
+        ctx.fillText(v, vZeroX - 8, y);
     }
+    ctx.fillText("0", vZeroX - 8, vZeroY);
+
+    // Title Right
+    ctx.save();
+    ctx.translate(370, vZeroY); 
+    ctx.rotate(-Math.PI/2);
+    ctx.textAlign = "center"; ctx.font = "bold 14px sans-serif"; ctx.fillStyle = "#8e44ad";
+    ctx.fillText("Position (m)", 0, 0);
+    ctx.restore();
+    
+    // Displacement Bar
+    drawBar(535, vZeroY, state.currentPos, vScale, "#8e44ad", "x", "", false);
 }
 
 function renderQuestions_1_1() {
     let div = document.getElementById('u1-1-questions');
+    
+    // Typography Helper
     const v = (text) => `<i class="var">${text}</i>`;
 
-    if (state.level === 0) {
+    if(state.level === 0) {
         div.innerHTML = `
             <h4 style="margin:0 0 10px 0; color:#e67e22;">Level 1: The Commute</h4>
             <p style="margin-bottom:10px;">Move <b>+5 m</b>, then move <b>-5 m</b>.</p>
             <p style="margin-bottom:10px;">Observe the <b style="color:#e67e22">Distance</b> vs. <b style="color:#8e44ad">Displacement</b>.</p>
-            <p>Target: ${v('x')} = 0.0 m, Distance = 10.0 m.</p>
+            <p>Target: ${v('x')} = 0 m, Distance = 10 m.</p>
         `;
-    } else if (state.level === 1) {
+    } else if(state.level === 1) {
         div.innerHTML = `
             <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 2: Negative Territory</h4>
             <p style="margin-bottom:10px;">Reach a position of <b>-8 m</b> using exactly <b>3 moves</b>.</p>
-            <p>Target: ${v('x')} = -8.0 m.</p>
+            <p>Target: ${v('x')} = -8 m.</p>
         `;
-    } else if (state.level === 2) {
+    } else if(state.level === 2) {
         div.innerHTML = `
-            <h4 style="margin:0 0 10px 0; color:#c0392b;">Level 3: The Overlap Challenge</h4>
-            <p style="margin-bottom:10px;">This tests vector sequence planning.</p>
-            <p style="margin-bottom:10px;">Navigate the cart to hit a total cumulative path <b>Distance</b> of exactly <b>14.0 m</b>.</p>
-            <p>However, your final net position vector (<b style="color:#8e44ad">Displacement</b>) must be exactly <b>+2.0 m</b>.</p>
+            <h4 style="margin:0 0 10px 0; color:#2980b9;">Level 3: Efficiency</h4>
+            <p style="margin-bottom:10px;">Reset. Make <b>Displacement = Distance</b>.</p>
+            <p>Target: ${v('x')} > 5 m, ${v('x')} == Distance.</p>
         `;
     } else {
         div.innerHTML = `
@@ -569,89 +572,37 @@ function renderQuestions_1_1() {
     }
 }
 
-function checkAnswer_1_1(lvl) {
-    let fb = document.getElementById('fb-' + lvl);
-    let tol = 0.2; 
-    
-    if (state.running) {
-        fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Stop the motor first to verify your position!</span>`;
-        return;
-    }
-
-    if (lvl === 0) {
-        if (Math.abs(state.displacement - 5.0) <= tol) {
-            fb.innerHTML = "<span style='color:green; font-weight:bold;'>Perfect! Unlocking next step...</span>";
-            setTimeout(() => advanceLevel_1_1(), 1500);
-        } else {
-            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Missed! Your Displacement is ${state.displacement.toFixed(1)} m. Aim for +5.0 m. Reset or keep driving.</span>`;
-        }
-    } 
-    else if (lvl === 1) {
-        if (Math.abs(state.displacement - (-5.0)) <= tol) {
-            fb.innerHTML = "<span style='color:green; font-weight:bold;'>Perfect! Unlocking next step...</span>";
-            setTimeout(() => advanceLevel_1_1(), 1500);
-        } else {
-            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Missed! Your Displacement is ${state.displacement.toFixed(1)} m. Aim for -5.0 m.</span>`;
-        }
-    }
-    else if (lvl === 2) {
-        if (Math.abs(state.distance - 15.0) <= tol && Math.abs(state.displacement - (-5.0)) <= tol) {
-            fb.innerHTML = "<span style='color:green; font-weight:bold;'>Boomerang Master! You nailed the math! Unlocking mastery...</span>";
-            setTimeout(() => advanceLevel_1_1(), 2000);
-        } else {
-            fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Missed! Dist = ${state.distance.toFixed(1)} m | Disp = ${state.displacement.toFixed(1)} m. Reset and try again!</span>`;
-        }
-    }
-}
-
-function advanceLevel_1_1() {
-    state.level++;
-    saveProgress('1.1', state.level);
-    if (state.level >= 3) {
-        document.getElementById('u1-1-badge').style.display = 'block';
-    }
-    renderQuestions_1_1();
-    reset_1_1();
-}
-
 function checkLevel_1_1() {
     let correct = false;
     
-    if (state.level === 0) {
-        if (Math.abs(state.currentPos) < 0.1 && Math.abs(state.distance - 10.0) < 0.1) {
-            correct = true;
-        }
+    if(state.level === 0) {
+        // Target: x=0, dist=10
+        if(Math.abs(state.currentPos) < 0.1 && Math.abs(state.distance - 10) < 0.1) correct = true;
     }
-    else if (state.level === 1) {
-        if (Math.abs(state.currentPos - (-8.0)) < 0.1 && state.history.length === 3) {
-            correct = true;
-        }
+    else if(state.level === 1) {
+        // Target: x=-8, moves=3
+        if(Math.abs(state.currentPos - (-8)) < 0.1 && state.history.length === 3) correct = true;
     }
-    else if (state.level === 2) {
-        // Target: distance = 14.0 m, displacement = +2.0 m
-        if (Math.abs(state.currentPos - 2.0) < 0.1 && Math.abs(state.distance - 14.0) < 0.1) {
-            correct = true;
-        }
+    else if(state.level === 2) {
+        // Target: x > 5, x == dist
+        if(state.currentPos > 5 && Math.abs(state.currentPos - state.distance) < 0.1) correct = true;
     }
     
-    if (correct) {
+    if(correct) {
+        // Visual Feedback
         let div = document.getElementById('u1-1-questions');
         div.innerHTML += `<div style="margin-top:10px; font-weight:bold; color:green;">Correct! Unlocking next step...</div>`;
         
         state.level++;
         saveProgress('1.1', state.level);
         
-        if (state.level >= 3) {
-            document.getElementById('u1-1-badge').style.display = 'block';
-        }
+        if(state.level >= 3) document.getElementById('u1-1-badge').style.display = 'block';
         
         setTimeout(() => {
-            state.history = []; 
-            state.currentPos = 0; 
-            state.distance = 0;
-            state.startPos = 0; 
-            state.targetPos = 0;
-            updateState_1_1('nextDx', 0); 
+            state.history = []; // Clear history for next level cleanly
+            state.currentPos = 0; state.distance = 0;
+            state.startPos = 0; state.targetPos = 0;
+            updateState_1_1('nextDx', 0); // Reset slider
             document.getElementById('in-dx').value = 0;
             renderQuestions_1_1();
         }, 1500);
