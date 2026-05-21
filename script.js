@@ -539,45 +539,32 @@ function draw_1_1() {
 
 function renderQuestions_1_1() {
     let div = document.getElementById('u1-1-questions');
+    const v = (text) => `<i class="var">${text}</i>`;
 
     if (state.level === 0) {
         div.innerHTML = `
-            <h4 style="margin:0 0 10px 0; color:#2980b9;">Level 1: Forward Motion</h4>
-            <p>Set a velocity and start the motor.</p>
-            <p>Drive the cart forward and stop the motor when your <b>Displacement</b> is exactly <b>+5.0 m</b>.</p>
-            <p style="font-size:0.85em; color:#666;">(Tolerance: &plusmn;0.2 m)</p>
-            <div style="margin-top:10px;">
-                <button onclick="checkAnswer_1_1(0)" class="btn btn-green" style="padding:6px 15px;">Verify Position</button>
-            </div>
-            <div id="fb-0" style="margin-top:10px;"></div>
+            <h4 style="margin:0 0 10px 0; color:#e67e22;">Level 1: The Commute</h4>
+            <p style="margin-bottom:10px;">Move <b>+5 m</b>, then move <b>-5 m</b>.</p>
+            <p style="margin-bottom:10px;">Observe the <b style="color:#e67e22">Distance</b> vs. <b style="color:#8e44ad">Displacement</b>.</p>
+            <p>Target: ${v('x')} = 0.0 m, Distance = 10.0 m.</p>
         `;
     } else if (state.level === 1) {
         div.innerHTML = `
-            <h4 style="margin:0 0 10px 0; color:#c0392b;">Level 2: Reverse</h4>
-            <p>Set a negative velocity and drive the cart backward.</p>
-            <p>Stop the motor when your <b>Displacement</b> is exactly <b>-5.0 m</b>.</p>
-            <p style="font-size:0.85em; color:#666;">(Tolerance: &plusmn;0.2 m)</p>
-            <div style="margin-top:10px;">
-                <button onclick="checkAnswer_1_1(1)" class="btn btn-green" style="padding:6px 15px;">Verify Position</button>
-            </div>
-            <div id="fb-1" style="margin-top:10px;"></div>
+            <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 2: Negative Territory</h4>
+            <p style="margin-bottom:10px;">Reach a position of <b>-8 m</b> using exactly <b>3 moves</b>.</p>
+            <p>Target: ${v('x')} = -8.0 m.</p>
         `;
     } else if (state.level === 2) {
         div.innerHTML = `
-            <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 3: The Boomerang</h4>
-            <p>This tests your understanding of Scalar path vs. Vector location.</p>
-            <p>Drive the cart so it accumulates a total <b>Distance</b> of exactly <b>15.0 m</b>.</p>
-            <p>However, your final parked <b>Displacement</b> must be exactly <b>-5.0 m</b>.</p>
-            <p style="font-size:0.85em; color:#666;">(Hint: How far forward must you drive before reversing to achieve these numbers?)</p>
-            <div style="margin-top:10px;">
-                <button onclick="checkAnswer_1_1(2)" class="btn btn-green" style="padding:6px 15px;">Verify Position</button>
-            </div>
-            <div id="fb-2" style="margin-top:10px;"></div>
+            <h4 style="margin:0 0 10px 0; color:#c0392b;">Level 3: The Overlap Challenge</h4>
+            <p style="margin-bottom:10px;">This tests vector sequence planning.</p>
+            <p style="margin-bottom:10px;">Navigate the cart to hit a total cumulative path <b>Distance</b> of exactly <b>14.0 m</b>.</p>
+            <p>However, your final net position vector (<b style="color:#8e44ad">Displacement</b>) must be exactly <b>+2.0 m</b>.</p>
         `;
     } else {
         div.innerHTML = `
-            <h3 style="color:#f39c12; margin:0;">&#9733; NAVIGATOR &#9733;</h3>
-            <p>You have mastered Distance and Displacement!</p>
+            <h3 style="color:#f39c12; margin:0;">&#9733; SCALAR MASTER &#9733;</h3>
+            <p>You understand that distance adds up, but displacement cancels out!</p>
         `;
     }
 }
@@ -628,7 +615,47 @@ function advanceLevel_1_1() {
 }
 
 function checkLevel_1_1() {
-    // Empty function required by the main loop router logic. Evaluation is handled by verify buttons in 1.1.
+    let correct = false;
+    
+    if (state.level === 0) {
+        if (Math.abs(state.currentPos) < 0.1 && Math.abs(state.distance - 10.0) < 0.1) {
+            correct = true;
+        }
+    }
+    else if (state.level === 1) {
+        if (Math.abs(state.currentPos - (-8.0)) < 0.1 && state.history.length === 3) {
+            correct = true;
+        }
+    }
+    else if (state.level === 2) {
+        // Target: distance = 14.0 m, displacement = +2.0 m
+        if (Math.abs(state.currentPos - 2.0) < 0.1 && Math.abs(state.distance - 14.0) < 0.1) {
+            correct = true;
+        }
+    }
+    
+    if (correct) {
+        let div = document.getElementById('u1-1-questions');
+        div.innerHTML += `<div style="margin-top:10px; font-weight:bold; color:green;">Correct! Unlocking next step...</div>`;
+        
+        state.level++;
+        saveProgress('1.1', state.level);
+        
+        if (state.level >= 3) {
+            document.getElementById('u1-1-badge').style.display = 'block';
+        }
+        
+        setTimeout(() => {
+            state.history = []; 
+            state.currentPos = 0; 
+            state.distance = 0;
+            state.startPos = 0; 
+            state.targetPos = 0;
+            updateState_1_1('nextDx', 0); 
+            document.getElementById('in-dx').value = 0;
+            renderQuestions_1_1();
+        }, 1500);
+    }
 }
 
 // ===============================================
