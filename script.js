@@ -196,6 +196,123 @@ function loadSim(simId) {
 }
 
 // ===============================================
+// === HOME / WELCOME SCREEN (Gold Standard) ===
+// ===============================================
+
+function setup_welcome() {
+    currentSim = 'welcome';
+    canvas.width = 700; 
+    canvas.height = 300; // Shorter canvas to leave room for the tutorial text
+
+    // Unhide the interface if it is hidden by default in index.html
+    let interfaceDiv = document.getElementById('sim-interface');
+    if (interfaceDiv) interfaceDiv.classList.remove('hidden');
+
+    document.getElementById('sim-title').innerText = "Physics 1 Interactive Laboratory";
+    
+    document.getElementById('sim-desc').innerHTML = `
+        <h3 style="margin-top:0; color:#2c3e50;">Welcome to the Virtual Lab!</h3>
+        <p style="font-size: 1.1em; line-height: 1.6; color: #34495e;">
+            This platform is designed to help you master fundamental physics concepts through visual, interactive exploration. 
+            Instead of just memorizing equations, you will manipulate variables, run experiments, and watch the physics engine react in real time.
+        </p>
+    `;
+
+    document.getElementById('sim-controls').innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 10px;">
+            <div style="background: #fff; padding: 20px; border-radius: 8px; border-left: 5px solid #2980b9; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                <h4 style="margin-top:0; color: #2980b9; display:flex; align-items:center;"><span style="font-size:1.5em; margin-right:8px;">🖱️</span> 1. Select a Module</h4>
+                <p style="margin-bottom:0; font-size: 0.95em; color:#555;">Use the sidebar menu on the left to navigate through the course units. Click any topic to load its simulation.</p>
+            </div>
+            <div style="background: #fff; padding: 20px; border-radius: 8px; border-left: 5px solid #27ae60; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                <h4 style="margin-top:0; color: #27ae60; display:flex; align-items:center;"><span style="font-size:1.5em; margin-right:8px;">🎯</span> 2. Choose Your Mode</h4>
+                <p style="margin-bottom:0; font-size: 0.95em; color:#555;">Start in <b>Guided Mode</b> to work through structured challenges. Once you master a level, you will automatically unlock the next.</p>
+            </div>
+            <div style="background: #fff; padding: 20px; border-radius: 8px; border-left: 5px solid #8e44ad; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                <h4 style="margin-top:0; color: #8e44ad; display:flex; align-items:center;"><span style="font-size:1.5em; margin-right:8px;">🎛️</span> 3. Experiment</h4>
+                <p style="margin-bottom:0; font-size: 0.95em; color:#555;">Use the sliders to adjust mass, force, velocity, and other variables. Watch how the real-time graphs and calculations respond.</p>
+            </div>
+            <div style="background: #fff; padding: 20px; border-radius: 8px; border-left: 5px solid #f39c12; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                <h4 style="margin-top:0; color: #f39c12; display:flex; align-items:center;"><span style="font-size:1.5em; margin-right:8px;">🏆</span> 4. Earn Badges</h4>
+                <p style="margin-bottom:0; font-size: 0.95em; color:#555;">Complete Level 3 in any module to earn its unique mastery badge. Your progress is saved automatically in your browser.</p>
+            </div>
+        </div>
+        <div style="text-align: center; margin-top: 35px; padding: 15px; background: #eef2f3; border-radius: 8px; font-weight: bold; color: #2c3e50;">
+            &#8592; Open the sidebar menu and select your first simulation to begin!
+        </div>
+    `;
+
+    // Initialize animation state
+    state = { t: 0 };
+    loop_welcome();
+}
+
+function loop_welcome() {
+    // Stop this loop immediately if the user clicks a different simulation
+    if (currentSim !== 'welcome') return;
+    
+    state.t += 0.015;
+    let cx = canvas.width / 2;
+    let cy = canvas.height / 2;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Clean Canvas Background
+    ctx.fillStyle = "#ecf0f1";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // --- DRAW DYNAMIC ORBITAL SYSTEM ---
+    // Central Mass (Sun/Nucleus)
+    ctx.fillStyle = "#f39c12";
+    ctx.beginPath();
+    ctx.arc(cx, cy, 30, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#e67e22";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    
+    // Orbit 1 Path
+    ctx.strokeStyle = "rgba(44, 62, 80, 0.2)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, 80, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Orbit 2 Path
+    ctx.beginPath();
+    ctx.arc(cx, cy, 140, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Object 1 (Inner)
+    let p1x = cx + Math.cos(state.t * 2) * 80;
+    let p1y = cy + Math.sin(state.t * 2) * 80;
+    ctx.fillStyle = "#3498db";
+    ctx.beginPath();
+    ctx.arc(p1x, p1y, 12, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Object 2 (Outer)
+    let p2x = cx + Math.cos(state.t * 1.2 + Math.PI) * 140;
+    let p2y = cy + Math.sin(state.t * 1.2 + Math.PI) * 140;
+    ctx.fillStyle = "#e74c3c";
+    ctx.beginPath();
+    ctx.arc(p2x, p2y, 18, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Moon orbiting Object 2
+    let mx = p2x + Math.cos(state.t * 5) * 35;
+    let my = p2y + Math.sin(state.t * 5) * 35;
+    ctx.fillStyle = "#bdc3c7";
+    ctx.beginPath();
+    ctx.arc(mx, my, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    requestAnimationFrame(loop_welcome);
+}
+
+// ===============================================
 // === UNIT 1.1: SCALARS & VECTORS (Gold Standard v4.0) ===
 // ===============================================
 
@@ -14942,6 +15059,11 @@ function start_6_1() {
         state.history = [];
         
         calcPhysics_6_1();
+        
+        // Take a "snapshot" of the physics to freeze the graph scale for this run
+        state.runKMax = state.kRotInit;
+        state.runTMax = state.tStop;
+        
         updateLocks_6_1();
         loop_6_1();
     }
@@ -14965,6 +15087,10 @@ function reset_6_1() {
         tauGen: 100,
         alpha: 0,
         tStop: 0,
+        
+        // Snapshot variables for freezing the graph
+        runKMax: 0,
+        runTMax: 0,
         
         running: false,
         history: [], 
@@ -14995,6 +15121,10 @@ function reset_6_1() {
     calcPhysics_6_1();
     
     state.currentK = state.kRotInit;
+    
+    // Take a snapshot on reset so the empty graph matches the initial sliders
+    state.runKMax = state.kRotInit;
+    state.runTMax = state.tStop;
 
     if (state.level >= 3) {
         document.getElementById('u6-1-badge').style.display = 'block';
@@ -15068,7 +15198,7 @@ function draw_6_1() {
     for (let i = 0; i < 700; i += pxPerM) {
         ctx.beginPath(); 
         ctx.moveTo(i, 0); 
-        ctx.lineTo(i, 450); 
+        ctx.lineTo(450, 0); // Visual bound fix
         ctx.stroke();
         
         ctx.beginPath(); 
@@ -15083,10 +15213,9 @@ function draw_6_1() {
     ctx.fillStyle = "#95a5a6";
     ctx.fillRect(cx - 50, cy + 180, 100, 40);
     
-    // Draw Flywheel Rotor (Top Down perspective on a spinning baton)
+    // Draw Flywheel Rotor
     ctx.save();
     ctx.translate(cx, cy);
-    // Negative theta so mathematically CCW spins visually CCW
     ctx.rotate(-state.theta);
     
     // Draw Rod
@@ -15099,7 +15228,7 @@ function draw_6_1() {
     ctx.stroke();
     
     // Draw Masses
-    let boxSize = 15 + state.m; // Visual mass scaling
+    let boxSize = 15 + state.m; 
     
     ctx.fillStyle = "#c0392b";
     ctx.fillRect(rPx - boxSize / 2, -boxSize / 2, boxSize, boxSize);
@@ -15123,18 +15252,17 @@ function draw_6_1() {
     
     // Current Spin Vector (Curved Arrow)
     if (state.currentW > 0.1) {
-        let arcLen = Math.min(state.currentW * 0.2, Math.PI); // Scale visual arrow
+        let arcLen = Math.min(state.currentW * 0.2, Math.PI); 
         let startAng = -Math.PI / 2;
-        let endAng = startAng - arcLen; // Negative draws CCW
+        let endAng = startAng - arcLen; 
         
         ctx.strokeStyle = "rgba(46, 204, 113, 0.8)";
         ctx.lineWidth = 6;
         
         ctx.beginPath();
-        ctx.arc(cx, cy, 60, startAng, endAng, true); // true = CCW drawing
+        ctx.arc(cx, cy, 60, startAng, endAng, true); 
         ctx.stroke();
         
-        // Arrowhead (CCW Tangent is endAng - 90)
         let tAng = endAng - Math.PI / 2; 
         let aX = cx + 60 * Math.cos(endAng);
         let aY = cy + 60 * Math.sin(endAng);
@@ -15171,9 +15299,12 @@ function draw_6_1() {
     ctx.lineTo(700, panelY);
     ctx.stroke();
     
-    // Dynamic Graph Scaling
-    let dynamicTMax = Math.max(state.tStop * 1.1, 2.0); // Minimum 2.0s graph width
-    let dynamicKMax = Math.max(100, Math.ceil(state.kRotInit / 500) * 500); // Round up to nearest 500
+    // Graph scale is strictly tied to the snapshot variables now
+    let displayKMax = state.runKMax || 100;
+    let displayTMax = state.runTMax || 2.0;
+
+    let dynamicTMax = Math.max(displayTMax * 1.1, 2.0); 
+    let dynamicKMax = Math.max(100, Math.ceil(displayKMax / 500) * 500); 
     
     drawEnergyGraph_6_1(80, panelY + 20, 560, 130, state.history, dynamicTMax, dynamicKMax);
 }
@@ -15209,6 +15340,12 @@ function drawEnergyGraph_6_1(x, y, w, h, data, tMax, kMax) {
     ctx.fillText(tMax.toFixed(1) + " s", x + w + 15, y + h + 15);
     
     if (data.length > 0) {
+        // Create a clipping region so the graph never paints outside its box
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x, y, w, h);
+        ctx.clip();
+        
         let pxPerK = h / kMax;
         
         ctx.fillStyle = "rgba(46, 204, 113, 0.3)";
@@ -15243,6 +15380,8 @@ function drawEnergyGraph_6_1(x, y, w, h, data, tMax, kMax) {
             }
         }
         ctx.stroke();
+        
+        ctx.restore(); // End clipping region
     }
 }
 
@@ -15926,3 +16065,12 @@ function checkLevel_6_2() {
         }
     }
 }
+
+// ==========================================================
+// === INITIALIZATION TRIGGER ===
+// ==========================================================
+
+// Boot up the welcome screen when the page loads
+window.onload = () => {
+    setup_welcome();
+};
