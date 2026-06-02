@@ -140,6 +140,8 @@ function loadSim(simId) {
         else if (simId === '3.3') { setup_3_3(); validSim = true; }
         else if (simId === '3.4') { setup_3_4(); validSim = true; }
         else if (simId === '3.5') { setup_3_5(); validSim = true; }
+	// Test Sandbox
+        else if (simId === '3.5_test') { setup_3_5_test(); validSim = true; }
         
         // Unit 4: Momentum
         else if (simId === '4.1') { setup_4_1(); validSim = true; }
@@ -9905,6 +9907,457 @@ function checkAnswer_3_5(lvl) {
 
 function checkLevel_3_5() {
     // Empty, levels are strictly validated by input answers here.
+}
+
+// ===============================================
+// === TEST SANDBOX: UNIT 3.5 (Power & Path Dependence) ===
+// ===============================================
+
+function setup_3_5_test() {
+    canvas.width = 700; 
+    canvas.height = 640; 
+
+    document.getElementById('sim-title').innerText = "3.5 Power & Path Dependence (TEST)";
+    
+    document.getElementById('sim-desc').innerHTML = `
+        <h3 style="margin-top:0; margin-bottom:10px;">The Switchback Paradox</h3>
+        <p style="margin-bottom:10px; line-height:1.4;">
+        Two hikers of equal mass summit a 100m tall mountain. The blue hiker takes the steep, direct path. The red hiker takes the winding switchback trail.
+        <br><b>Equations:</b> <i class="var">W</i> = <i class="var">Fd</i> = &Delta;<i class="var">U<sub>g</sub></i> &nbsp;|&nbsp; <i class="var">P</i> = <i class="var">W / t</i> = <i class="var">Fv</i>
+        <br><i><b>Mission:</b> Apply the same constant Power to both hikers and compare their trips!</i></p>`;
+
+    document.getElementById('sim-controls').innerHTML = `
+        <div style="background:#eef2f3; padding:10px; border-radius:5px; margin-bottom:15px; border:1px solid #ccc; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; flex-direction:column; gap:5px;">
+                <label style="font-weight:bold; margin:0;">Mode:</label>
+                <div style="display:flex; gap:15px;">
+                    <label style="cursor:pointer; margin:0; display:flex; align-items:center;">
+                        <input type="radio" name="sim-mode" value="guided" checked onchange="setMode_3_5_test('guided')" style="margin-right:5px;"> Guided
+                    </label>
+                    <label style="cursor:pointer; margin:0; display:flex; align-items:center;">
+                        <input type="radio" name="sim-mode" value="challenge" onchange="setMode_3_5_test('challenge')" style="margin-right:5px;"> Full Version
+                    </label>
+                </div>
+            </div>
+            <div id="u3-5-test-badge" style="display:none; font-weight:bold; color:#f39c12; font-family:sans-serif; text-align:right;">
+                <span style="font-size:1.5em; vertical-align:middle;">&#9733;</span> TRAILBLAZER
+            </div>
+        </div>
+
+        <div class="control-group" style="border-left: 4px solid #2980b9; padding-left: 10px;">
+            <label style="color:#2980b9; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>Hiker Mass (<i class="var">m</i>):</span>
+                <span><span id="v-m-35-test">60</span> kg</span>
+            </label>
+            <input type="range" id="in-m-35-test" class="phys-slider" min="40" max="100" step="5" value="60" 
+                oninput="updateState_3_5_test('m', this.value)">
+        </div>
+
+        <div class="control-group" style="border-left: 4px solid #e67e22; padding-left: 10px; margin-top:10px;">
+            <label style="color:#e67e22; font-weight:bold; display:flex; justify-content:space-between;">
+                <span>Constant Power Output (<i class="var">P</i>):</span>
+                <span><span id="v-p-35-test">200</span> W</span>
+            </label>
+            <input type="range" id="in-p-35-test" class="phys-slider" min="50" max="500" step="10" value="200" 
+                oninput="updateState_3_5_test('pTarget', this.value)">
+        </div>
+
+        <div style="margin-top:15px; display:flex; gap:10px;">
+            <button class="btn btn-green" onclick="start_3_5_test()" id="btn-start-35-test">Start Hike</button>
+            <button class="btn btn-red" onclick="reset_3_5_test()">Reset</button>
+        </div>
+        
+        <div id="u3-5-test-questions" style="margin-top:20px; border-top:2px solid #eee; padding-top:15px; background:#fafafa; padding:15px; border-radius:5px;">
+        </div>
+    `;
+
+    // Snap Protection
+    const preventJump = (e) => {
+        const rect = e.target.getBoundingClientRect();
+        const min = parseFloat(e.target.min);
+        const max = parseFloat(e.target.max);
+        const val = parseFloat(e.target.value);
+        let clientX = e.clientX;
+        if(e.type === 'touchstart') clientX = e.touches[0].clientX;
+        const ratio = (val - min) / (max - min);
+        const clickX = clientX - rect.left;
+        const thumbX = ratio * rect.width;
+        if(Math.abs(clickX - thumbX) > 35) e.preventDefault();
+    };
+    document.querySelectorAll('#in-m-35-test, #in-p-35-test').forEach(s => {
+        s.addEventListener('mousedown', preventJump);
+        s.addEventListener('touchstart', preventJump, {passive: false});
+    });
+
+    reset_3_5_test();
+}
+
+function updateState_3_5_test(key, val) {
+    if (state.running) return;
+    state[key] = parseFloat(val);
+    
+    if (key === 'm') document.getElementById('v-m-35-test').innerText = state.m.toFixed(0);
+    if (key === 'pTarget') document.getElementById('v-p-35-test').innerText = state.pTarget.toFixed(0);
+    
+    calcPhysics_3_5_test();
+    draw_3_5_test();
+}
+
+function setMode_3_5_test(mode) {
+    state.mode = mode;
+    const qDiv = document.getElementById('u3-5-test-questions');
+    const badge = document.getElementById('u3-5-test-badge');
+
+    if (state.level >= 3) badge.style.display = 'block';
+    else badge.style.display = 'none';
+
+    if (mode === 'challenge') {
+        qDiv.style.display = 'none';
+        ['in-m-35-test', 'in-p-35-test'].forEach(id => {
+            document.getElementById(id).disabled = false;
+            document.getElementById(id).parentElement.style.opacity = "1.0";
+        });
+    } else {
+        qDiv.style.display = 'block';
+        renderQuestions_3_5_test();
+    }
+    
+    updateLocks_3_5_test();
+    draw_3_5_test();
+}
+
+function updateLocks_3_5_test() {
+    let sliders = document.querySelectorAll('#in-m-35-test, #in-p-35-test');
+    let runBtn = document.getElementById('btn-start-35-test');
+    let lock = state.running;
+    
+    sliders.forEach(s => {
+        if (state.mode === 'guided') {
+            if (state.level === 0 && s.id === 'in-p-35-test') {
+                s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+            }
+            if (state.level === 1 && s.id === 'in-m-35-test') {
+                s.disabled = true; s.parentElement.style.opacity = "0.5"; return;
+            }
+        }
+        s.disabled = lock;
+        s.style.opacity = lock ? "0.5" : "1.0";
+    });
+    
+    runBtn.disabled = lock;
+    runBtn.style.opacity = lock ? "0.5" : "1.0";
+}
+
+function calcPhysics_3_5_test() {
+    state.h = 100.0; // Fixed mountain height
+    
+    // Work done against gravity (identical for both paths)
+    state.workTotal = state.m * 9.8 * state.h;
+    
+    // Total time required to deliver that Work at the target Power
+    state.tTotal = state.workTotal / state.pTarget;
+    
+    // Path Metrics
+    state.dSteep = 120.0; 
+    state.dSwitch = 300.0;
+    
+    // Force required along path: W = F*d -> F = W/d
+    state.fSteep = state.workTotal / state.dSteep;
+    state.fSwitch = state.workTotal / state.dSwitch;
+    
+    // Velocity required to finish in tTotal: v = d/t
+    state.vSteep = state.dSteep / state.tTotal;
+    state.vSwitch = state.dSwitch / state.tTotal;
+}
+
+function start_3_5_test() {
+    if (!state.running) {
+        state.running = true;
+        state.tElapsed = 0;
+        calcPhysics_3_5_test();
+        updateLocks_3_5_test();
+        loop_3_5_test();
+    }
+}
+
+function reset_3_5_test() {
+    let savedLevel = loadProgress('3.5_test'); 
+
+    state = {
+        m: parseFloat(document.getElementById('in-m-35-test').value),
+        pTarget: parseFloat(document.getElementById('in-p-35-test').value),
+        
+        tElapsed: 0,
+        running: false,
+        
+        mode: document.querySelector('input[name="sim-mode"]:checked').value,
+        level: savedLevel || 0
+    };
+    
+    if (state.mode === 'guided') {
+        if (state.level === 0) { state.m = 60; state.pTarget = 150; }
+        else if (state.level === 1) { state.m = 80; state.pTarget = 200; }
+        else if (state.level === 2) { state.m = 50; state.pTarget = 250; }
+        
+        document.getElementById('in-m-35-test').value = state.m;
+        document.getElementById('in-p-35-test').value = state.pTarget;
+        document.getElementById('v-m-35-test').innerText = state.m.toFixed(0);
+        document.getElementById('v-p-35-test').innerText = state.pTarget.toFixed(0);
+    }
+    
+    calcPhysics_3_5_test();
+
+    if (state.level >= 3) document.getElementById('u3-5-test-badge').style.display = 'block';
+
+    setMode_3_5_test(state.mode);
+    
+    requestAnimationFrame(() => draw_3_5_test());
+}
+
+function loop_3_5_test() {
+    // SECURITY LOCK: Only run if the router set this as the active sim
+    if (currentSim !== '3.5_test') return;
+
+    if (state.running) {
+        // Accelerate simulation time so the visual doesn't take 300 seconds
+        let dt = 0.016 * 20; 
+        state.tElapsed += dt;
+        
+        if (state.tElapsed >= state.tTotal) {
+            state.tElapsed = state.tTotal;
+            state.running = false;
+            
+            if (state.mode === 'guided') checkLevel_3_5_test();
+            updateLocks_3_5_test();
+        }
+    }
+
+    draw_3_5_test();
+    
+    if (state.running) requestAnimationFrame(loop_3_5_test);
+}
+
+// Helper to draw the animated stick figures
+function drawStickFigure_test(ctx, x, y, progress, color) {
+    let runCycle = state.running ? progress * 100 : 0;
+    let bounce = Math.abs(Math.sin(runCycle)) * 4;
+    let legSwing = Math.sin(runCycle) * 8;
+    let armSwing = Math.sin(runCycle) * 6;
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    // Head
+    ctx.beginPath(); ctx.arc(x, y - 20 - bounce, 4, 0, Math.PI*2); ctx.stroke();
+    // Body
+    ctx.beginPath(); ctx.moveTo(x, y - 16 - bounce); ctx.lineTo(x, y - 6 - bounce); ctx.stroke();
+    // Legs
+    ctx.beginPath(); ctx.moveTo(x, y - 6 - bounce); ctx.lineTo(x - legSwing, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y - 6 - bounce); ctx.lineTo(x + legSwing, y); ctx.stroke();
+    // Arms
+    ctx.beginPath(); ctx.moveTo(x, y - 12 - bounce); ctx.lineTo(x + armSwing, y - 5 - bounce); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y - 12 - bounce); ctx.lineTo(x - armSwing, y - 5 - bounce); ctx.stroke();
+}
+
+function getSwitchbackPos_test(progress) {
+    let p = progress * 4;
+    let base = 350;
+    let peak = 50;
+    
+    let seg = Math.floor(p);
+    let rem = p - seg;
+    if (seg >= 4) { seg = 3; rem = 1; }
+    
+    let y = base - (seg * 75) - (rem * 75);
+    
+    let x;
+    if (seg === 0) x = 600 - (rem * 200);      
+    else if (seg === 1) x = 400 + (rem * 200); 
+    else if (seg === 2) x = 600 - (rem * 200); 
+    else x = 400 + (rem * 100);                
+    
+    return {x: x, y: y};
+}
+
+function draw_3_5_test() {
+    ctx.clearRect(0, 0, 700, 640);
+    
+    // 1. Draw Environment
+    let baseY = 350;
+    let peakY = 50;
+    
+    ctx.fillStyle = "#ecf0f1"; ctx.fillRect(0, 0, 700, baseY);
+    ctx.fillStyle = "#bdc3c7"; ctx.fillRect(0, baseY, 700, 290);
+    
+    ctx.fillStyle = "#95a5a6";
+    ctx.beginPath();
+    ctx.moveTo(100, baseY);
+    ctx.lineTo(500, peakY);
+    ctx.lineTo(700, baseY);
+    ctx.fill();
+    
+    ctx.strokeStyle = "#34495e"; ctx.lineWidth = 4; ctx.setLineDash([5,5]);
+    ctx.beginPath(); ctx.moveTo(250, baseY); ctx.lineTo(500, peakY); ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(600, baseY);
+    ctx.lineTo(400, baseY - 75);
+    ctx.lineTo(600, baseY - 150);
+    ctx.lineTo(400, baseY - 225);
+    ctx.lineTo(500, peakY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    ctx.strokeStyle = "#7f8c8d"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(50, baseY); ctx.lineTo(50, peakY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(40, peakY); ctx.lineTo(60, peakY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(40, baseY); ctx.lineTo(60, baseY); ctx.stroke();
+    ctx.fillStyle = "#2c3e50"; ctx.font = "bold 14px sans-serif";
+    ctx.fillText("h = 100 m", 65, baseY - 140);
+    
+    // 2. Draw Hikers
+    let progress = state.tTotal > 0 ? state.tElapsed / state.tTotal : 0;
+    
+    let sX = 250 + progress * (500 - 250);
+    let sY = baseY - progress * (baseY - peakY);
+    drawStickFigure_test(ctx, sX, sY, progress, "#2980b9");
+    
+    let pos = getSwitchbackPos_test(progress);
+    drawStickFigure_test(ctx, pos.x, pos.y, progress, "#c0392b");
+    
+    // 3. Draw Comparison Dashboard (Bottom)
+    let dashY = 380;
+    ctx.fillStyle = "white"; ctx.fillRect(10, dashY, 680, 250);
+    ctx.strokeStyle = "#ccc"; ctx.strokeRect(10, dashY, 680, 250);
+    
+    ctx.beginPath(); ctx.moveTo(350, dashY + 10); ctx.lineTo(350, dashY + 240); ctx.stroke();
+    
+    ctx.font = "bold 16px sans-serif";
+    
+    // Steep Data
+    ctx.fillStyle = "#2980b9";
+    ctx.fillText("Steep Path (Blue Hiker)", 30, dashY + 30);
+    ctx.fillStyle = "#333"; ctx.font = "14px monospace";
+    ctx.fillText(`Distance (d) : ${state.dSteep.toFixed(1)} m`, 30, dashY + 60);
+    ctx.fillText(`Work (W)     : ${(state.workTotal).toFixed(0)} J`, 30, dashY + 90);
+    ctx.fillText(`Power (P)    : ${state.pTarget.toFixed(0)} W`, 30, dashY + 120);
+    
+    ctx.fillStyle = "#8e44ad";
+    ctx.fillText(`Required F   : ${state.fSteep.toFixed(1)} N (HIGH)`, 30, dashY + 160);
+    ctx.fillText(`Velocity (v) : ${state.vSteep.toFixed(2)} m/s (SLOW)`, 30, dashY + 190);
+    
+    // Switchback Data
+    ctx.fillStyle = "#c0392b"; ctx.font = "bold 16px sans-serif";
+    ctx.fillText("Switchback Path (Red Hiker)", 370, dashY + 30);
+    ctx.fillStyle = "#333"; ctx.font = "14px monospace";
+    ctx.fillText(`Distance (d) : ${state.dSwitch.toFixed(1)} m`, 370, dashY + 60);
+    ctx.fillText(`Work (W)     : ${(state.workTotal).toFixed(0)} J`, 370, dashY + 90);
+    ctx.fillText(`Power (P)    : ${state.pTarget.toFixed(0)} W`, 370, dashY + 120);
+    
+    ctx.fillStyle = "#27ae60";
+    ctx.fillText(`Required F   : ${state.fSwitch.toFixed(1)} N (LOW)`, 370, dashY + 160);
+    ctx.fillText(`Velocity (v) : ${state.vSwitch.toFixed(2)} m/s (FAST)`, 370, dashY + 190);
+    
+    // Time Bar
+    ctx.fillStyle = "#34495e"; ctx.font = "bold 18px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(`Time Elapsed: ${state.tElapsed.toFixed(1)} s / ${state.tTotal.toFixed(1)} s`, 350, dashY + 230);
+    ctx.textAlign = "left";
+}
+
+function renderQuestions_3_5_test() {
+    let div = document.getElementById('u3-5-test-questions');
+    const v = (text) => `<i class="var">${text}</i>`;
+
+    if (state.level === 0) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#2980b9;">Level 1: Same Mountain, Same Work</h4>
+            <p>Mass is <b>60 kg</b>. The mountain is exactly <b>100 m</b> tall.</p>
+            <p>Calculate the total Work (${v('W')} = ${v('mgh')}) done against gravity to reach the peak.</p>
+            <div style="margin-top:10px;">
+                <input type="number" id="ans-1-35-test" placeholder="Joules" style="width:100px; padding:4px;" 
+                       onkeypress="if(event.key==='Enter') checkAnswer_3_5_test(0)"> 
+                <button onclick="checkAnswer_3_5_test(0)" style="cursor:pointer; padding:4px 8px;">Check</button>
+            </div>
+            <div id="fb-0-35-test"></div>
+        `;
+    } else if (state.level === 1) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#c0392b;">Level 2: Power and Time</h4>
+            <p>Mass is now <b>80 kg</b>. The mountain is still 100 m tall.</p>
+            <p>If you output a constant Power of <b>200 W</b>, how many <b>seconds</b> will it take to reach the top?</p>
+            <div style="margin-top:10px;">
+                <input type="number" id="ans-2-35-test" placeholder="Seconds" style="width:100px; padding:4px;" 
+                       onkeypress="if(event.key==='Enter') checkAnswer_3_5_test(1)"> 
+                <button onclick="checkAnswer_3_5_test(1)" style="cursor:pointer; padding:4px 8px;">Check</button>
+            </div>
+            <div id="fb-1-35-test"></div>
+        `;
+    } else if (state.level === 2) {
+        div.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:#8e44ad;">Level 3: The Paradox</h4>
+            <p>Notice how <b>both hikers finish at the exact same time</b> when Power is identical.</p>
+            <p>To maintain the same Power, the red hiker covers a massive distance by walking very FAST but pushing very LIGHTLY.</p>
+            <p>Adjust the sliders. Try to make the hike take exactly <b>245 seconds</b>.</p>
+            <div id="fb-2-35-test" style="margin-top:10px; font-weight:bold;">Waiting for hike...</div>
+        `;
+    } else {
+        div.innerHTML = `
+            <h3 style="color:#f39c12; margin:0;">&#9733; TRAILBLAZER &#9733;</h3>
+            <p>You have mastered Power! W = Fd, P = W/t, meaning P = Fv!</p>
+        `;
+    }
+}
+
+function checkAnswer_3_5_test(lvl) {
+    let correct = false;
+    let fb = document.getElementById('fb-' + lvl + '-35-test');
+    
+    if (lvl === 0) {
+        let val = parseFloat(document.getElementById('ans-1-35-test').value);
+        if (state.m === 60 && Math.abs(val - 58800.0) < 5.0) correct = true;
+        else {
+             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Incorrect. (m = 60, g = 9.8, h = 100)</span>`;
+             return;
+        }
+    } else if (lvl === 1) {
+        let val = parseFloat(document.getElementById('ans-2-35-test').value);
+        if (state.m === 80 && state.pTarget === 200 && Math.abs(val - 392.0) < 1.0) correct = true;
+        else {
+             fb.innerHTML = `<span style='color:#c0392b; font-weight:bold;'>Incorrect. Find Work first, then t = W / P!</span>`;
+             return;
+        }
+    }
+
+    if (correct) {
+        fb.innerHTML = "<span style='color:green; font-weight:bold;'>Correct! Unlocking next step...</span>";
+        setTimeout(() => {
+            state.level++;
+            saveProgress('3.5_test', state.level);
+            if (state.level >= 3) document.getElementById('u3-5-test-badge').style.display = 'block';
+            renderQuestions_3_5_test();
+            reset_3_5_test();
+        }, 1500);
+    }
+}
+
+function checkLevel_3_5_test() {
+    if (state.mode === 'guided' && state.level === 2) {
+        let fb = document.getElementById('fb-2-35-test');
+        if (Math.abs(state.tTotal - 245.0) < 1.0) { 
+            fb.innerHTML = "<span style='color:green;'>Perfect! The hike took exactly 245 seconds! Unlocking mastery...</span>";
+            setTimeout(() => {
+                state.level++;
+                saveProgress('3.5_test', state.level);
+                document.getElementById('u3-5-test-badge').style.display = 'block';
+                renderQuestions_3_5_test();
+                reset_3_5_test();
+            }, 2000);
+        } else {
+            fb.innerHTML = `<span style='color:#c0392b;'>Missed! That hike took ${state.tTotal.toFixed(1)} seconds. Adjust sliders to hit 245s.</span>`;
+        }
+    }
 }
 
 // ===============================================
